@@ -315,8 +315,10 @@ export default function Home() {
             </div>
             <div className="header-right">
               <Link href="/reply" className="h-btn">Reply</Link>
+              <Link href="/tools" className="h-btn">Tools</Link>
               <Link href="/schedule" className="h-btn">Sched</Link>
               <Link href="/growth" className="h-btn">Growth</Link>
+              <Link href="/dashboard" className="h-btn">Dash</Link>
               <button className="h-btn" onClick={() => { setShowHistory(!showHistory); setShowStrategy(false); setShowCalendar(false) }}>
                 {history.length}
               </button>
