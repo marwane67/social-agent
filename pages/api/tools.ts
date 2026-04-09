@@ -150,6 +150,63 @@ JSON strict :
   "next_week_plan":"plan de contenu recommandé pour la semaine prochaine"
 }}`
   }),
+
+  recycle: (input, network) => ({
+    system: `Tu es un expert en recyclage de contenu. ${ISMAA_CONTEXT}`,
+    prompt: `Ancien post qui a bien marché :
+"${input}"
+
+Réécris ce post avec 3 angles frais et différents pour ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}. Le message de fond reste le même mais la forme change complètement.
+
+JSON strict :
+{"recycled":[
+  {"type":"NOUVEL ANGLE","text":"...","angle":"ce qui a changé par rapport à l'original"},
+  {"type":"MISE À JOUR","text":"...","angle":"..."},
+  {"type":"FORMAT DIFFÉRENT","text":"...","angle":"..."}
+]}
+
+- Max ${network === 'twitter' ? '280' : '1500'} chars chacun
+- Chaque version doit être suffisamment différente pour ne pas ressembler à un repost`
+  }),
+
+  competitor: (input) => ({
+    system: `Tu es un analyste de stratégie social media. ${ISMAA_CONTEXT}`,
+    prompt: `Post d'un concurrent/compte dans la niche d'Ismaa :
+"${input}"
+
+Analyse ce post et trouve les opportunités pour Ismaa.
+
+JSON strict :
+{"analysis":{
+  "strategy":"la stratégie derrière ce post",
+  "strengths":"ce qui marche bien dans ce post",
+  "weaknesses":"les faiblesses ou angles manqués",
+  "missed_angles":"les angles que ce concurrent ne couvre pas et qu'Ismaa pourrait prendre",
+  "counter_posts":["3 idées de posts qu'Ismaa pourrait faire en réponse/complément"]
+}}`
+  }),
+
+  dm: (input, network) => ({
+    system: `Tu es un expert en cold outreach et networking. ${ISMAA_CONTEXT}`,
+    prompt: `Objectif du DM : "${input}"
+Plateforme : ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}
+
+Génère 3 templates de DM.
+
+JSON strict :
+{"dms":[
+  {"type":"DIRECT","text":"...","strategy":"pourquoi ça marche"},
+  {"type":"VALEUR D'ABORD","text":"...","strategy":"..."},
+  {"type":"CONNEXION PERSO","text":"...","strategy":"..."}
+]}
+
+- DIRECT = aller droit au but avec respect
+- VALEUR D'ABORD = offrir quelque chose avant de demander
+- CONNEXION PERSO = créer un lien personnel d'abord
+- Court (3-5 lignes max), naturel, pas template-like
+- Pas de "J'espère que vous allez bien" ou "Je me permets de..."
+- Ton naturel d'Ismaa`
+  }),
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
