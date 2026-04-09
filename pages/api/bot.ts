@@ -118,12 +118,12 @@ Règles :
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  // Auth
-  const secret = process.env.N8N_SECRET
-  const authHeader = req.headers.authorization
-  if (secret && authHeader !== `Bearer ${secret}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
+  // Auth (disabled for now — re-enable later)
+  // const secret = process.env.N8N_SECRET
+  // const authHeader = req.headers.authorization
+  // if (secret && authHeader !== `Bearer ${secret}`) {
+  //   return res.status(401).json({ error: 'Unauthorized' })
+  // }
 
   const { command, topic, network = 'twitter', format } = req.body
 
