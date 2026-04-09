@@ -4,13 +4,13 @@ import { useState } from 'react'
 
 type Network = 'twitter' | 'linkedin'
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Posts', icon: 'P' },
-  { href: '/reply', label: 'Reply', icon: 'R' },
-  { href: '/tools', label: 'Tools', icon: 'T' },
-  { href: '/schedule', label: 'Schedule', icon: 'S' },
-  { href: '/growth', label: 'Growth', icon: 'G' },
-  { href: '/dashboard', label: 'Dashboard', icon: 'D' },
+const NAV = [
+  { href: '/', label: 'Posts', emoji: 'P' },
+  { href: '/reply', label: 'Reply', emoji: 'R' },
+  { href: '/tools', label: 'Tools', emoji: 'T' },
+  { href: '/schedule', label: 'Schedule', emoji: 'S' },
+  { href: '/growth', label: 'Growth', emoji: 'G' },
+  { href: '/dashboard', label: 'Dashboard', emoji: 'D' },
 ]
 
 type Props = {
@@ -23,146 +23,126 @@ type Props = {
 
 export default function Layout({ children, network, onNetworkChange, title, subtitle }: Props) {
   const router = useRouter()
-  const [mobileNav, setMobileNav] = useState(false)
-
-  const accent = network === 'linkedin' ? 'var(--li)' : 'var(--accent)'
+  const [open, setOpen] = useState(false)
+  const isLi = network === 'linkedin'
 
   return (
-    <div className="layout">
-      {/* Top Bar */}
-      <nav className="topbar">
-        <div className="topbar-inner">
-          <div className="topbar-left">
-            <div className="brand">
-              <div className="brand-icon" style={{ background: accent, color: network === 'linkedin' ? '#fff' : '#000' }}>
-                {network === 'twitter' ? 'X' : 'in'}
-              </div>
-              <div className="brand-text">
-                <span className="brand-name">Social Agent</span>
-                <span className="brand-sub">@ismaa_pxl</span>
-              </div>
-            </div>
-
-            {/* Desktop nav */}
-            <div className="nav-links">
-              {NAV_ITEMS.map(item => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`nav-link ${router.pathname === item.href ? 'nav-active' : ''}`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+    <div className="shell">
+      {/* Sidebar */}
+      <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
+        <div className="sb-top">
+          <div className="sb-brand">
+            <div className={`sb-logo ${isLi ? 'sb-logo-li' : ''}`}>{isLi ? 'in' : 'X'}</div>
+            <div>
+              <div className="sb-name">Social Agent</div>
+              <div className="sb-handle">@ismaa_pxl</div>
             </div>
           </div>
 
-          <div className="topbar-right">
-            {/* Network toggle */}
-            <div className="net-toggle">
-              <button
-                className={`net-btn ${network === 'twitter' ? 'net-on' : ''}`}
-                onClick={() => onNetworkChange('twitter')}
-              >
-                X
-              </button>
-              <button
-                className={`net-btn ${network === 'linkedin' ? 'net-on net-li' : ''}`}
-                onClick={() => onNetworkChange('linkedin')}
-              >
-                in
-              </button>
-            </div>
-
-            {/* Mobile hamburger */}
-            <button className="hamburger" onClick={() => setMobileNav(!mobileNav)}>
-              {mobileNav ? 'X' : '='}
-            </button>
+          <div className="sb-net">
+            <button className={`sb-net-btn ${!isLi ? 'sb-net-on' : ''}`} onClick={() => onNetworkChange('twitter')}>Twitter</button>
+            <button className={`sb-net-btn ${isLi ? 'sb-net-on sb-net-li' : ''}`} onClick={() => onNetworkChange('linkedin')}>LinkedIn</button>
           </div>
         </div>
 
-        {/* Mobile nav dropdown */}
-        {mobileNav && (
-          <div className="mobile-nav">
-            {NAV_ITEMS.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`mobile-link ${router.pathname === item.href ? 'mobile-active' : ''}`}
-                onClick={() => setMobileNav(false)}
-              >
-                <span className="mobile-icon">{item.icon}</span>
-                {item.label}
+        <nav className="sb-nav">
+          {NAV.map(item => {
+            const active = router.pathname === item.href
+            return (
+              <Link key={item.href} href={item.href} className={`sb-link ${active ? 'sb-active' : ''}`} onClick={() => setOpen(false)}>
+                <span className={`sb-icon ${active ? (isLi ? 'sb-icon-li' : 'sb-icon-on') : ''}`}>{item.emoji}</span>
+                <span className="sb-label">{item.label}</span>
+                {active && <span className="sb-dot" />}
               </Link>
-            ))}
+            )
+          })}
+        </nav>
+
+        <div className="sb-foot">Pixel Company · Brussels</div>
+      </aside>
+
+      {/* Mobile topbar */}
+      <div className="mobile-bar">
+        <button className="burger" onClick={() => setOpen(!open)}>
+          <span /><span /><span />
+        </button>
+        <div className="mb-title">{title || 'Social Agent'}</div>
+        <div className="mb-net">
+          <button className={`mn-btn ${!isLi ? 'mn-on' : ''}`} onClick={() => onNetworkChange('twitter')}>X</button>
+          <button className={`mn-btn ${isLi ? 'mn-on mn-li' : ''}`} onClick={() => onNetworkChange('linkedin')}>in</button>
+        </div>
+      </div>
+
+      {/* Overlay */}
+      {open && <div className="overlay" onClick={() => setOpen(false)} />}
+
+      {/* Main content */}
+      <main className="main">
+        {title && (
+          <div className="page-head">
+            <h1 className="page-title">{title}</h1>
+            {subtitle && <p className="page-sub">{subtitle}</p>}
           </div>
         )}
-      </nav>
-
-      {/* Page header */}
-      {title && (
-        <div className="page-header">
-          <h1 className="page-title">{title}</h1>
-          {subtitle && <p className="page-subtitle">{subtitle}</p>}
-        </div>
-      )}
-
-      {/* Content */}
-      <main className="content">{children}</main>
-
-      {/* Footer */}
-      <footer className="foot">Pixel Company · Ismaa · Brussels</footer>
+        <div className="page-body">{children}</div>
+      </main>
 
       <style jsx>{`
-        .layout { min-height:100vh; background:var(--bg); }
+        .shell { display:flex; min-height:100vh; background:#09090b; }
 
-        /* Topbar */
-        .topbar { position:sticky; top:0; z-index:50; background:rgba(9,9,11,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
-        .topbar-inner { max-width:800px; margin:0 auto; padding:0 20px; height:52px; display:flex; align-items:center; justify-content:space-between; }
-        .topbar-left { display:flex; align-items:center; gap:24px; }
-        .topbar-right { display:flex; align-items:center; gap:10px; }
+        /* Sidebar */
+        .sidebar { width:220px; background:#0e0e11; border-right:1px solid #1c1c22; display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:40; }
+        .sb-top { padding:20px 16px 12px; border-bottom:1px solid #1c1c22; }
+        .sb-brand { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+        .sb-logo { width:32px; height:32px; background:#fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; color:#000; flex-shrink:0; }
+        .sb-logo-li { background:#0a66c2; color:#fff; }
+        .sb-name { font-size:14px; font-weight:700; color:#fafafa; }
+        .sb-handle { font-size:10px; color:#52525b; font-family:'JetBrains Mono',monospace; }
 
-        .brand { display:flex; align-items:center; gap:8px; }
-        .brand-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; flex-shrink:0; }
-        .brand-text { display:flex; flex-direction:column; }
-        .brand-name { font-size:13px; font-weight:800; color:var(--text); line-height:1.2; }
-        .brand-sub { font-size:9px; color:var(--muted); font-family:var(--mono); }
+        .sb-net { display:flex; gap:4px; background:#18181b; border-radius:8px; padding:3px; }
+        .sb-net-btn { flex:1; padding:6px; font-size:11px; font-weight:600; color:#52525b; background:transparent; border:none; border-radius:6px; cursor:pointer; text-align:center; transition:all .15s; }
+        .sb-net-on { background:#27272a; color:#fafafa; }
+        .sb-net-li { background:rgba(10,102,194,.15); color:#3b9eff; }
 
-        .nav-links { display:flex; gap:2px; }
-        .nav-link { padding:6px 10px; font-size:12px; font-weight:600; color:var(--muted); border-radius:6px; transition:all .15s; }
-        .nav-link:hover { color:var(--text2); background:var(--card); }
-        .nav-active { color:var(--text); background:var(--card2); }
+        .sb-nav { flex:1; padding:8px; display:flex; flex-direction:column; gap:2px; }
+        .sb-link { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; text-decoration:none; color:#71717a; transition:all .12s; position:relative; }
+        .sb-link:hover { background:#18181b; color:#a1a1aa; }
+        .sb-active { background:#18181b; color:#fafafa; }
+        .sb-icon { width:26px; height:26px; background:#18181b; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#52525b; flex-shrink:0; }
+        .sb-icon-on { background:rgba(57,255,20,.1); color:#39ff14; }
+        .sb-icon-li { background:rgba(10,102,194,.12); color:#3b9eff; }
+        .sb-label { font-size:13px; font-weight:500; }
+        .sb-dot { position:absolute; right:10px; width:5px; height:5px; border-radius:50%; background:${isLi ? '#3b9eff' : '#39ff14'}; }
 
-        .net-toggle { display:flex; background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-        .net-btn { padding:5px 10px; font-size:11px; font-weight:800; color:var(--muted); background:transparent; border:none; cursor:pointer; transition:all .15s; }
-        .net-on { color:#fff; background:var(--card2); }
-        .net-li { color:var(--li); }
+        .sb-foot { padding:12px 16px; font-size:9px; color:#27272a; font-family:'JetBrains Mono',monospace; border-top:1px solid #1c1c22; }
 
-        .hamburger { display:none; background:var(--card); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:14px; font-weight:900; color:var(--text2); cursor:pointer; }
+        /* Mobile bar */
+        .mobile-bar { display:none; position:fixed; top:0; left:0; right:0; height:50px; background:rgba(14,14,17,.92); backdrop-filter:blur(12px); border-bottom:1px solid #1c1c22; z-index:30; padding:0 12px; align-items:center; justify-content:space-between; }
+        .burger { background:none; border:none; cursor:pointer; display:flex; flex-direction:column; gap:4px; padding:4px; }
+        .burger span { display:block; width:18px; height:2px; background:#a1a1aa; border-radius:1px; }
+        .mb-title { font-size:14px; font-weight:700; color:#fafafa; }
+        .mb-net { display:flex; background:#18181b; border-radius:6px; overflow:hidden; }
+        .mn-btn { padding:4px 10px; font-size:11px; font-weight:800; color:#52525b; background:transparent; border:none; cursor:pointer; }
+        .mn-on { background:#27272a; color:#fafafa; }
+        .mn-li { color:#3b9eff; }
 
-        .mobile-nav { display:none; padding:8px 20px 12px; border-top:1px solid var(--border); }
-        .mobile-link { display:flex; align-items:center; gap:8px; padding:8px 10px; font-size:13px; font-weight:600; color:var(--muted); border-radius:8px; }
-        .mobile-active { color:var(--text); background:var(--card); }
-        .mobile-icon { width:20px; height:20px; background:var(--card2); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; font-family:var(--mono); }
+        .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:35; }
 
-        /* Page header */
-        .page-header { max-width:800px; margin:0 auto; padding:24px 20px 0; }
-        .page-title { font-size:20px; font-weight:800; color:var(--text); letter-spacing:-0.02em; }
-        .page-subtitle { font-size:12px; color:var(--muted); margin-top:2px; }
+        /* Main */
+        .main { flex:1; margin-left:220px; min-height:100vh; }
+        .page-head { padding:28px 32px 0; }
+        .page-title { font-size:22px; font-weight:800; color:#fafafa; letter-spacing:-.02em; }
+        .page-sub { font-size:13px; color:#52525b; margin-top:2px; }
+        .page-body { padding:16px 32px 48px; }
 
-        /* Content */
-        .content { max-width:800px; margin:0 auto; padding:16px 20px 40px; }
-
-        /* Footer */
-        .foot { text-align:center; font-size:10px; color:var(--border); font-family:var(--mono); padding:20px; }
-
-        @media (max-width:700px) {
-          .nav-links { display:none; }
-          .hamburger { display:block; }
-          .mobile-nav { display:flex; flex-direction:column; gap:2px; }
-          .topbar-inner { padding:0 12px; }
-          .content { padding:12px 12px 40px; }
-          .page-header { padding:16px 12px 0; }
+        @media (max-width:768px) {
+          .sidebar { transform:translateX(-100%); transition:transform .2s ease; width:260px; }
+          .sidebar-open { transform:translateX(0); }
+          .mobile-bar { display:flex; }
+          .overlay { display:block; }
+          .main { margin-left:0; padding-top:50px; }
+          .page-head { padding:20px 16px 0; }
+          .page-body { padding:12px 16px 48px; }
         }
       `}</style>
     </div>
