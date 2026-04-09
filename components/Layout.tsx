@@ -8,6 +8,7 @@ const NAV = [
   { href: '/', label: 'Posts', emoji: 'P' },
   { href: '/reply', label: 'Reply', emoji: 'R' },
   { href: '/tools', label: 'Tools', emoji: 'T' },
+  { href: '/swipe', label: 'Swipe File', emoji: 'F' },
   { href: '/schedule', label: 'Schedule', emoji: 'S' },
   { href: '/growth', label: 'Growth', emoji: 'G' },
   { href: '/dashboard', label: 'Dashboard', emoji: 'D' },

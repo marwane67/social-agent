@@ -89,13 +89,21 @@ export default function Home() {
     setPosts([]); setEditTexts({}); setEditing(null); setEnhancements({}); setActivePanel({})
   }
 
+  const [multiMode, setMultiMode] = useState(false)
+
   const generate = async () => {
     if (!input.trim()) return
     setLoading(true); setPosts([]); setEnhancements({}); setActivePanel({})
     try {
-      const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input, format, network }) })
-      const data = await res.json()
-      if (data.posts) { setPosts(data.posts); setEditTexts({}); setEditing(null); saveHistory(data.posts, format, input, network) }
+      if (multiMode) {
+        const res = await fetch('/api/multipost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea: input, network }) })
+        const data = await res.json()
+        if (data.posts) { setPosts(data.posts.map((p: any) => ({ type: p.format, text: p.text }))); setEditTexts({}); setEditing(null); saveHistory(data.posts.map((p: any) => ({ type: p.format, text: p.text })), 'multi', input, network) }
+      } else {
+        const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input, format, network }) })
+        const data = await res.json()
+        if (data.posts) { setPosts(data.posts); setEditTexts({}); setEditing(null); saveHistory(data.posts, format, input, network) }
+      }
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }
 
@@ -128,6 +136,9 @@ export default function Home() {
         <div className="page-content">
           {/* Top actions */}
           <div className="top-actions">
+            <button className={`mode-btn ${!multiMode ? 'mode-on' : ''}`} onClick={() => setMultiMode(false)}>3 posts</button>
+            <button className={`mode-btn ${multiMode ? 'mode-on' : ''}`} onClick={() => setMultiMode(true)}>1 idée → 5 posts</button>
+            <div style={{ flex: 1 }} />
             <button className="ghost-btn" onClick={() => setShowHistory(!showHistory)}>
               {showHistory ? 'Fermer' : `Historique (${history.length})`}
             </button>
@@ -148,7 +159,7 @@ export default function Home() {
           )}
 
           {/* Format */}
-          <div className="section">
+          {!multiMode && <div className="section">
             <label className="label">Format</label>
             <div className="format-grid">
               {formats.map(f => (
@@ -158,7 +169,9 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
+
+          {multiMode && <div className="multi-hint">Donne une idée, l'IA génère 5 posts avec 5 angles différents (Raw Build, Hot Take, Story, One-Liner, Axora)</div>}
 
           {/* Input */}
           <div className="section">
@@ -175,7 +188,7 @@ export default function Home() {
 
           {/* Generate */}
           <button className={`primary-btn ${loading ? 'btn-loading' : ''}`} onClick={generate} disabled={loading} style={{ '--accent': accent } as any}>
-            {loading ? 'Génération en cours...' : `Générer 3 posts · ${currentFormat.label}`}
+            {loading ? 'Génération en cours...' : multiMode ? '1 idée → 5 posts' : `Générer 3 posts · ${currentFormat.label}`}
           </button>
 
           {/* Results */}
@@ -270,7 +283,11 @@ export default function Home() {
 
         <style jsx>{`
           .page-content { display:flex; flex-direction:column; gap:16px; }
-          .top-actions { display:flex; justify-content:flex-end; }
+          .top-actions { display:flex; align-items:center; gap:4px; }
+          .mode-btn { padding:6px 12px; font-size:12px; font-weight:600; color:var(--muted); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; }
+          .mode-btn:hover { border-color:var(--border2); }
+          .mode-on { border-color:${accent}; color:${accent}; background:${network === 'linkedin' ? 'var(--li-dim)' : 'var(--accent-dim)'}; }
+          .multi-hint { font-size:12px; color:var(--text2); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; }
           .ghost-btn { background:none; border:1px solid var(--border); border-radius:var(--radius-sm); padding:5px 12px; font-size:12px; color:var(--muted); cursor:pointer; font-weight:500; }
           .ghost-btn:hover { border-color:var(--border2); color:var(--text2); }
 
