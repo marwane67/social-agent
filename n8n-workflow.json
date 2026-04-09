@@ -1,0 +1,160 @@
+{
+  "name": "Social Agent — Telegram Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "REMPLACER",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse le message Telegram\nconst msg = $input.first().json.message.text || '';\nconst parts = msg.trim().split(/\\s+/);\nconst cmd = parts[0]?.replace('/', '').toLowerCase();\n\n// Détecter le réseau\nlet network = 'twitter';\nif (msg.toLowerCase().includes('linkedin') || msg.toLowerCase().includes(' li ')) {\n  network = 'linkedin';\n}\n\n// Détecter le format\nconst formats = ['raw_build','hot_take','behind_scenes','ai_authority','storytelling','one_liner','axora_hype','engagement_bait'];\nlet format = '';\nfor (const f of formats) {\n  if (msg.toLowerCase().includes(f.replace('_', ' ')) || msg.toLowerCase().includes(f)) {\n    format = f;\n    break;\n  }\n}\n// Aliases\nif (msg.toLowerCase().includes('hot take')) format = 'hot_take';\nif (msg.toLowerCase().includes('one liner') || msg.toLowerCase().includes('oneliner')) format = 'one_liner';\nif (msg.toLowerCase().includes('story')) format = 'storytelling';\nif (msg.toLowerCase().includes('axora')) format = 'axora_hype';\nif (msg.toLowerCase().includes('bts') || msg.toLowerCase().includes('behind')) format = 'behind_scenes';\n\n// Construire le topic (tout sauf la commande et les keywords)\nlet topic = parts.slice(1).join(' ')\n  .replace(/linkedin|twitter|li /gi, '')\n  .replace(new RegExp(formats.join('|').replace(/_/g, '.'), 'gi'), '')\n  .replace(/hot.take|one.liner|behind.the.scenes/gi, '')\n  .trim();\n\n// Map des commandes\nconst commandMap = {\n  'today': 'today',\n  'aujourd': 'today',\n  'aujourdhui': 'today', \n  'tomorrow': 'tomorrow',\n  'demain': 'tomorrow',\n  'week': 'week',\n  'semaine': 'week',\n  'post': 'post',\n  'formats': 'formats',\n  'help': 'help',\n  'start': 'help',\n};\n\nconst command = commandMap[cmd] || (cmd === 'today' ? 'today' : 'help');\n\nreturn {\n  command,\n  topic: topic || undefined,\n  network,\n  format: format || undefined,\n  chat_id: $input.first().json.message.chat.id\n};"
+      },
+      "id": "parse-command",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://social-agent-eosin.vercel.app/api/bot",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REMPLACER_PAR_TON_N8N_SECRET"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ command: $json.command, topic: $json.topic, network: $json.network, format: $json.format }) }}"
+      },
+      "id": "call-api",
+      "name": "Call Social Agent API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Command').item.json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-response",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [910, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "REMPLACER",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "daily-schedule",
+      "name": "Daily 9AM (Weekdays)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://social-agent-eosin.vercel.app/api/bot",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REMPLACER_PAR_TON_N8N_SECRET"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"command\":\"today\",\"network\":\"twitter\"}"
+      },
+      "id": "auto-generate",
+      "name": "Auto Generate Daily Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 520]
+    },
+    {
+      "parameters": {
+        "chatId": "REMPLACER_PAR_TON_CHAT_ID",
+        "text": "=📱 Post du jour prêt !\n\n{{ $json.message }}\n\n---\nRéponds \"ok\" pour que je le poste, ou édite-le.",
+        "additionalFields": {}
+      },
+      "id": "notify-telegram",
+      "name": "Notify on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [690, 520],
+      "credentials": {
+        "telegramApi": {
+          "id": "REMPLACER",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [{ "node": "Parse Command", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [{ "node": "Call Social Agent API", "type": "main", "index": 0 }]
+      ]
+    },
+    "Call Social Agent API": {
+      "main": [
+        [{ "node": "Send Telegram Reply", "type": "main", "index": 0 }]
+      ]
+    },
+    "Daily 9AM (Weekdays)": {
+      "main": [
+        [{ "node": "Auto Generate Daily Post", "type": "main", "index": 0 }]
+      ]
+    },
+    "Auto Generate Daily Post": {
+      "main": [
+        [{ "node": "Notify on Telegram", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
