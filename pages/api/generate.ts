@@ -519,30 +519,25 @@ Règles :
     label: 'Lead Magnet',
     icon: 'LM',
     desc: 'Générer des lead magnets qui captent des emails et des abonnés',
-    types: ['POST + LEAD MAGNET', 'CARROUSEL OUTLINE', 'FREEBIE TEASER'],
+    types: ['POST + CHECKLIST', 'POST + CARROUSEL', 'POST + FREEBIE'],
     prompt: (input) => `Contexte : "${input}"
 
-Tu dois générer 3 concepts de lead magnets LinkedIn complets, chacun avec :
-1. Le POST LinkedIn qui va promouvoir le lead magnet (le post qui donne envie de le télécharger)
-2. Le CONTENU du lead magnet lui-même (plan détaillé)
+Génère 3 posts LinkedIn qui servent de lead magnets. Chaque post doit donner 80% de la valeur gratuitement, puis proposer un bonus à récupérer.
 
 Format JSON strict :
 {"posts":[
-  {"type":"POST + LEAD MAGNET","text":"[LE POST LINKEDIN]\\n\\n---LEAD MAGNET---\\n\\nTitre : [titre du lead magnet]\\nFormat : [PDF / Checklist / Template / Mini-guide]\\nContenu :\\n1. [section 1 avec détail]\\n2. [section 2 avec détail]\\n3. [section 3 avec détail]\\n4. [section 4 avec détail]\\n5. [section 5 avec détail]\\nHook de téléchargement : [la phrase qui donne envie de le récupérer]"},
-  {"type":"CARROUSEL OUTLINE","text":"[LE POST LINKEDIN pour promouvoir le carrousel]\\n\\n---CARROUSEL LEAD MAGNET---\\n\\nTitre carrousel : [titre accrocheur]\\nSlide 1 (Cover) : [titre + sous-titre]\\nSlide 2 : [point 1 avec contenu]\\nSlide 3 : [point 2 avec contenu]\\nSlide 4 : [point 3 avec contenu]\\nSlide 5 : [point 4 avec contenu]\\nSlide 6 : [point 5 avec contenu]\\nSlide 7 (CTA) : [appel à l'action pour récupérer la version complète]"},
-  {"type":"FREEBIE TEASER","text":"[LE POST LINKEDIN teaser]\\n\\n---FREEBIE DÉTAIL---\\n\\nNom : [nom du freebie]\\nFormat : [Notion template / Google Sheet / Checklist PDF / Prompt pack]\\nCe qu'il contient :\\n- [élément 1]\\n- [élément 2]\\n- [élément 3]\\n- [élément 4]\\n- [élément 5]\\nPourquoi ça marche : [pourquoi les gens vont le vouloir]\\nCTA : [comment le distribuer — commentaire, DM, lien bio]"}
+  {"type":"POST + CHECKLIST","text":"le post LinkedIn complet (800-1200 chars). Le post doit être éducatif et finir par : Commente CHECKLIST et je te l'envoie en DM."},
+  {"type":"POST + CARROUSEL","text":"le post LinkedIn qui accompagne un carrousel (800-1200 chars). Décris le contenu des 7 slides dans le post lui-même. Finis par : Like + commente pour recevoir le PDF."},
+  {"type":"POST + FREEBIE","text":"le post LinkedIn qui tease un template/outil gratuit (800-1200 chars). Montre le résultat obtenu avec l'outil AVANT de le proposer. Finis par : Commente TEMPLATE et je t'envoie le lien."}
 ]}
 
 Règles :
-- Le POST doit donner un MAXIMUM de valeur gratuite pour créer la confiance. 80% de la valeur dans le post, le lead magnet = le 20% restant structuré/actionnable.
-- Le post doit être autonome et excellent MÊME sans le lead magnet
-- "POST + LEAD MAGNET" = un post éducatif ultra-complet + un PDF/checklist qui approfondit. Le post doit finir par "Commente [mot] et je t'envoie [le lead magnet]"
-- "CARROUSEL OUTLINE" = le plan complet d'un carrousel LinkedIn (7 slides) qui sert de lead magnet visuel + un post d'accroche
-- "FREEBIE TEASER" = un post qui tease un outil/template gratuit qu'Ismaa a créé. Montrer le résultat AVANT de donner l'outil.
-- Les lead magnets doivent être liés à : IA, entrepreneuriat, acquisition de business, building in public, productivité avec l'IA
-- Le post fait 800-1500 caractères, hook ultra-fort en ligne 1
-- Le contenu du lead magnet doit être assez détaillé pour qu'Ismaa puisse le créer directement
-- Ton naturel, pas commercial. C'est du partage de valeur, pas du marketing.`
+- Hook ultra-fort en ligne 1 (coupé après "voir plus")
+- Format aéré : 1 idée par ligne, sauts de ligne
+- Le post doit être excellent MÊME sans télécharger le lead magnet
+- Lié à : IA, entrepreneuriat, acquisition de business, building in public
+- Ton naturel, pas commercial
+- JSON uniquement, rien d'autre`
   },
 }
 
