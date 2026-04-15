@@ -129,22 +129,14 @@ export default function ProspectsPage() {
                       <div className="p-location">{p.city}{p.city && p.country ? ', ' : ''}{p.country}</div>
                     </div>
 
-                    {p.linkedin && (
-                      <a className="p-linkedin" href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(p.name + ' ' + p.company)}`} target="_blank" rel="noopener noreferrer">
-                        LinkedIn
-                      </a>
-                    )}
-
                     {/* Message section */}
                     <div className="p-actions">
                       <button className="p-msg-btn" onClick={() => generateMsg(i)} disabled={msgLoading === i}>
                         {msgLoading === i ? '...' : messages[i] ? 'Regénérer' : 'Générer un message'}
                       </button>
-                      {p.linkedin && (
-                        <a className="p-open" href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(p.name + ' ' + p.company)}`} target="_blank" rel="noopener noreferrer">
-                          Ouvrir le profil
-                        </a>
-                      )}
+                      <a className="p-open" href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(p.name + ' ' + p.company)}`} target="_blank" rel="noopener noreferrer">
+                        Chercher sur LinkedIn
+                      </a>
                     </div>
 
                     {messages[i] && (
