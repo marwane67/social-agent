@@ -130,7 +130,7 @@ export default function ProspectsPage() {
                     </div>
 
                     {p.linkedin && (
-                      <a className="p-linkedin" href={p.linkedin.startsWith('http') ? p.linkedin : `https://${p.linkedin}`} target="_blank" rel="noopener noreferrer">
+                      <a className="p-linkedin" href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(p.name + ' ' + p.company)}`} target="_blank" rel="noopener noreferrer">
                         LinkedIn
                       </a>
                     )}
@@ -141,7 +141,7 @@ export default function ProspectsPage() {
                         {msgLoading === i ? '...' : messages[i] ? 'Regénérer' : 'Générer un message'}
                       </button>
                       {p.linkedin && (
-                        <a className="p-open" href={p.linkedin.startsWith('http') ? p.linkedin : `https://${p.linkedin}`} target="_blank" rel="noopener noreferrer">
+                        <a className="p-open" href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(p.name + ' ' + p.company)}`} target="_blank" rel="noopener noreferrer">
                           Ouvrir le profil
                         </a>
                       )}
