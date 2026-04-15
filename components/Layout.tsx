@@ -10,6 +10,7 @@ const NAV = [
   { href: '/tools', label: 'Tools', emoji: 'T' },
   { href: '/swipe', label: 'Swipe File', emoji: 'F' },
   { href: '/schedule', label: 'Schedule', emoji: 'S' },
+  { href: '/prospects', label: 'Prospects', emoji: 'Q' },
   { href: '/outreach', label: 'Outreach', emoji: 'O' },
   { href: '/growth', label: 'Growth', emoji: 'G' },
   { href: '/dashboard', label: 'Dashboard', emoji: 'D' },
