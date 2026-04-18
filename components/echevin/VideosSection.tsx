@@ -1,22 +1,13 @@
 import Link from 'next/link';
+import type { Video } from '../../lib/content';
 
-// PLACEHOLDER : a remplacer par les vraies videos
-const FEATURED_VIDEO = {
-  date: 'Mars 2025',
-  title: 'Tolérance zéro contre les dépôts clandestins',
-  source: 'Conseil communal',
-  duration: '8:20',
-  href: '#',
-};
-
-const VIDEOS = [
-  { date: 'Février 2025', title: 'Action Propreté–Police sur le terrain', source: 'Reportage', duration: '3:45', href: '#' },
-  { date: 'Janvier 2025', title: 'Bilan 2024 : 5 000 amendes', source: 'BX1', duration: '12:10', href: '#' },
-  { date: 'Décembre 2024', title: 'Prestation de serment', source: 'Ville de Bruxelles', duration: '4:30', href: '#' },
-  { date: 'Décembre 2024', title: 'Première interview comme échevin', source: 'RTBF', duration: '6:15', href: '#' },
-];
-
-export default function VideosSection() {
+export default function VideosSection({ videos }: { videos: Video[] }) {
+  if (!videos || videos.length === 0) {
+    return null;
+  }
+  const featured = videos[0];
+  const rest = videos.slice(1, 5);
+  const featuredHref = featured.file_url || '#';
   return (
     <section className="ec-videos">
       <div className="ec-videos__inner">
@@ -29,37 +20,47 @@ export default function VideosSection() {
               </Link>
             </div>
             <div className="ec-videos__featured-right">
-              <Link href={FEATURED_VIDEO.href} className="ec-videos__featured-card">
+              <a href={featuredHref} target="_blank" rel="noopener noreferrer" className="ec-videos__featured-card">
                 <div className="ec-videos__featured-thumb">
-                  <div className="ec-videos__thumb-placeholder ec-videos__thumb-placeholder--large">&#9654;</div>
+                  {featured.thumb_url ? (
+                    <img src={featured.thumb_url} alt={featured.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div className="ec-videos__thumb-placeholder ec-videos__thumb-placeholder--large">&#9654;</div>
+                  )}
                 </div>
                 <div className="ec-videos__featured-info">
-                  <p className="ec-videos__date">{FEATURED_VIDEO.date}</p>
-                  <h3 className="ec-videos__title">{FEATURED_VIDEO.title}</h3>
+                  <p className="ec-videos__date">{featured.date}</p>
+                  <h3 className="ec-videos__title">{featured.title}</h3>
                   <div className="ec-videos__meta">
-                    <span>{FEATURED_VIDEO.source}</span>
-                    <span>{FEATURED_VIDEO.duration}</span>
+                    <span>{featured.source}</span>
+                    <span>{featured.duration}</span>
                   </div>
                 </div>
-              </Link>
+              </a>
             </div>
           </div>
 
-          <div className="ec-videos__grid">
-            {VIDEOS.map((video, i) => (
-              <Link href={video.href} className="ec-videos__card" key={i}>
-                <div className="ec-videos__card-thumb">
-                  <div className="ec-videos__thumb-placeholder">&#9654;</div>
-                </div>
-                <p className="ec-videos__date">{video.date}</p>
-                <h4 className="ec-videos__card-title">{video.title}</h4>
-                <div className="ec-videos__meta">
-                  <span>{video.source}</span>
-                  <span>{video.duration}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {rest.length > 0 && (
+            <div className="ec-videos__grid">
+              {rest.map((video) => (
+                <a href={video.file_url || '#'} target="_blank" rel="noopener noreferrer" className="ec-videos__card" key={video.id}>
+                  <div className="ec-videos__card-thumb">
+                    {video.thumb_url ? (
+                      <img src={video.thumb_url} alt={video.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="ec-videos__thumb-placeholder">&#9654;</div>
+                    )}
+                  </div>
+                  <p className="ec-videos__date">{video.date}</p>
+                  <h4 className="ec-videos__card-title">{video.title}</h4>
+                  <div className="ec-videos__meta">
+                    <span>{video.source}</span>
+                    <span>{video.duration}</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

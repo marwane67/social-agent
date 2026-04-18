@@ -1,8 +1,10 @@
 import SocialRow from './SocialRow';
 import Logo from './Logo';
 import StackedNav from './StackedNav';
+import type { HeroSettings } from '../../lib/content';
 
-export default function Hero() {
+export default function Hero({ hero }: { hero?: HeroSettings }) {
+  void hero; // reserved for future use
   return (
     <section className="ec-hero">
       {/* COL GAUCHE : photo d'Anas */}

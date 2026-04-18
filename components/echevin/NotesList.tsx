@@ -1,14 +1,15 @@
 import Link from 'next/link';
-import { NOTES } from '../../data/notes';
+import type { Article } from '../../lib/content';
 
 type Props = {
+  articles: Article[];
   limit?: number;
   showMore?: boolean;
   moreHref?: string;
 };
 
-export default function NotesList({ limit, showMore, moreHref = '/echevin/notes' }: Props) {
-  const items = typeof limit === 'number' ? NOTES.slice(0, limit) : NOTES;
+export default function NotesList({ articles, limit, showMore, moreHref = '/echevin/notes' }: Props) {
+  const items = typeof limit === 'number' ? articles.slice(0, limit) : articles;
   return (
     <section className="ec-articles">
       <div className="ec-articles__inner">
@@ -22,12 +23,14 @@ export default function NotesList({ limit, showMore, moreHref = '/echevin/notes'
                 className="ec-article-card__image-link"
               >
                 <div className="ec-article-card__image">
-                  <img
-                    src={note.image}
-                    alt={note.title}
-                    className="ec-article-card__image-img"
-                    loading="lazy"
-                  />
+                  {note.image_url && (
+                    <img
+                      src={note.image_url}
+                      alt={note.title}
+                      className="ec-article-card__image-img"
+                      loading="lazy"
+                    />
+                  )}
                   <span className="ec-article-card__source">{note.source}</span>
                 </div>
               </a>

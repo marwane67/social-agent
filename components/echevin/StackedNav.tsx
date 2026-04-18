@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { NOTES } from '../../data/notes';
 import Logo from './Logo';
+import { sbPublic } from '../../lib/supabase';
 
 const HOME_HREF = '/echevin';
 
@@ -21,8 +21,9 @@ const NAV_ITEMS = [
   { label: 'Bio', href: '/echevin/bio' },
 ];
 
+type SearchNote = { id: string; title: string; excerpt: string; source: string; date: string; href: string };
+
 type Props = {
-  /** If true, this nav is overlaid on a photo hero (used on bio/notes/videos pages). */
   floating?: boolean;
 };
 
@@ -30,17 +31,33 @@ export default function StackedNav({ floating = false }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [allNotes, setAllNotes] = useState<SearchNote[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!open || loaded) return;
+    sbPublic
+      .from('articles')
+      .select('id,title,excerpt,source,date,href')
+      .eq('published', true)
+      .then(({ data }) => {
+        setAllNotes((data || []) as SearchNote[]);
+        setLoaded(true);
+      });
+  }, [open, loaded]);
 
   const matches = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return NOTES.filter(
-      (n) =>
-        n.title.toLowerCase().includes(q) ||
-        n.excerpt.toLowerCase().includes(q) ||
-        n.source.toLowerCase().includes(q)
-    ).slice(0, 6);
-  }, [query]);
+    return allNotes
+      .filter(
+        (n) =>
+          n.title.toLowerCase().includes(q) ||
+          n.excerpt.toLowerCase().includes(q) ||
+          n.source.toLowerCase().includes(q),
+      )
+      .slice(0, 6);
+  }, [query, allNotes]);
 
   const isActive = (href: string) => {
     const clean = href.split('?')[0];
@@ -83,7 +100,7 @@ export default function StackedNav({ floating = false }: Props) {
                   >
                     {item.label}
                   </Link>
-                )
+                ),
               )}
             </nav>
 

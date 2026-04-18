@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { NOTES } from '../../data/notes';
+import type { Article } from '../../lib/content';
 
-export default function FeaturedNote() {
-  const featured = NOTES[0];
+export default function FeaturedNote({ featured }: { featured: Article | null }) {
+  if (!featured) return null;
 
   return (
     <section className="ec-featured">
@@ -34,11 +34,13 @@ export default function FeaturedNote() {
           </div>
 
           <div className="ec-featured__image">
-            <img
-              src={featured.image}
-              alt={featured.title}
-              className="ec-featured__image-img"
-            />
+            {featured.image_url && (
+              <img
+                src={featured.image_url}
+                alt={featured.title}
+                className="ec-featured__image-img"
+              />
+            )}
           </div>
         </div>
       </div>
