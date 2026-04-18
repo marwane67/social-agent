@@ -2,56 +2,50 @@ export default function ContactSection() {
   return (
     <section className="ec-contact">
       <div className="ec-contact__inner">
-        {/* Info */}
-        <div className="ec-contact__info">
-          <h2>Contact</h2>
-          <h3>Me contacter</h3>
-          <p>
-            {/* PLACEHOLDER : adapter l'adresse et les infos */}
-            Ma permanence est située au{' '}
-            <strong>[Adresse de la permanence], [Code postal] [Commune]</strong>.
-          </p>
-          <p style={{ marginTop: 16 }}>
-            Vous pouvez prendre rendez-vous en écrivant à{' '}
-            <a href="mailto:contact@echevin.be">contact@echevin.be</a> ou
-            par téléphone au <a href="tel:+3200000000">+32 (0) 00 00 00 00</a>.
-          </p>
+        <div className="ec-contact__bg">
+          <img
+            src="/bruxelles.jpg"
+            alt="Bruxelles"
+            className="ec-contact__bg-img"
+          />
+          <div className="ec-contact__overlay" />
         </div>
 
-        {/* Form */}
-        <form
-          className="ec-contact__form"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <div className="ec-contact__form-row">
-            <input
-              className="ec-contact__input"
-              type="text"
-              placeholder="Prénom"
-              required
-            />
-            <input
-              className="ec-contact__input"
-              type="text"
-              placeholder="Nom"
-              required
-            />
+        <div className="ec-contact__content">
+          <div className="ec-contact__title-image">
+            <div className="ec-contact__title-placeholder">Me contacter</div>
           </div>
-          <input
-            className="ec-contact__input"
-            type="email"
-            placeholder="E-mail"
-            required
-          />
-          <textarea
-            className="ec-contact__textarea"
-            placeholder="Message"
-            required
-          />
-          <button className="ec-contact__submit" type="submit">
-            Envoyer
-          </button>
-        </form>
+
+          <div className="ec-contact__box">
+            <p className="ec-contact__address">
+              Pour toute question relative à l&apos;échevinat des Finances ou de
+              la Propreté publique, vous pouvez me joindre à la{' '}
+              <strong>Ville de Bruxelles</strong>. Retrouvez également toutes
+              les informations officielles sur ma{' '}
+              <a
+                href="https://www.bruxelles.be/anas-ben-abdelmoumen"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                page bruxelles.be
+              </a>
+              .
+            </p>
+
+            <form
+              className="ec-contact__form"
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <div className="ec-contact__form-row">
+                <input type="text" placeholder="Prénom" required />
+                <input type="text" placeholder="Nom" required />
+              </div>
+              <input type="email" placeholder="E-mail" required />
+              <textarea placeholder="Votre message" rows={7} required />
+              <button type="submit">Envoyer</button>
+            </form>
+          </div>
+        </div>
       </div>
     </section>
   );

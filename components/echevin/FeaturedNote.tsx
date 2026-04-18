@@ -1,50 +1,44 @@
 import Link from 'next/link';
+import { NOTES } from '../../data/notes';
 
 export default function FeaturedNote() {
+  const featured = NOTES[0];
+
   return (
-    <section className="ec-featured-note">
-      <div className="ec-featured-note__inner">
-        <div className="ec-featured-note__card">
-          {/* Colonne gauche : image */}
-          <div className="ec-featured-note__image">
-            {/* PLACEHOLDER : image de l'article */}
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                minHeight: '300px',
-                background: 'linear-gradient(135deg, #7B13D6 0%, #4a0a80 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'rgba(255,255,255,0.6)',
-                fontSize: '14px',
-                fontWeight: 500,
-              }}
-            >
-              Image article
-            </div>
+    <section className="ec-featured">
+      <div className="ec-featured__inner">
+        <div className="ec-featured__card">
+          <div className="ec-featured__sidebar">
+            <div className="ec-featured__sidebar-label">Actualités</div>
           </div>
 
-          {/* Colonne droite : contenu sur fond sombre */}
-          <div className="ec-featured-note__body">
-            <p className="ec-featured-note__date">15 avril</p>
-            <h2 className="ec-featured-note__title">
-              Titre de l&apos;article mis en avant
-            </h2>
-            <p className="ec-featured-note__excerpt">
-              {/* PLACEHOLDER : extrait de l'article */}
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-              eiusmod tempor incididunt ut labore...
+          <div className="ec-featured__body">
+            <p className="ec-featured__date">
+              {featured.source} &mdash; {featured.date}
             </p>
-            <div className="ec-featured-note__buttons">
-              <Link href="#" className="ec-featured-note__btn">
-                lire la suite
-              </Link>
-              <Link href="/echevin/notes" className="ec-featured-note__btn">
+            <h2 className="ec-featured__title">{featured.title}</h2>
+            <p className="ec-featured__excerpt">{featured.excerpt}</p>
+            <div className="ec-featured__buttons">
+              <a
+                href={featured.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ec-featured__btn"
+              >
+                lire l&apos;article
+              </a>
+              <Link href="/echevin/notes" className="ec-featured__btn">
                 toutes mes actualités
               </Link>
             </div>
+          </div>
+
+          <div className="ec-featured__image">
+            <img
+              src={featured.image}
+              alt={featured.title}
+              className="ec-featured__image-img"
+            />
           </div>
         </div>
       </div>

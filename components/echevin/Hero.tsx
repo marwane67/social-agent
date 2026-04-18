@@ -1,62 +1,43 @@
 import SocialRow from './SocialRow';
+import Logo from './Logo';
+import StackedNav from './StackedNav';
 
 export default function Hero() {
   return (
     <section className="ec-hero">
-      {/* Background image — PLACEHOLDER : remplacer par l'image de fond */}
-      <div className="ec-hero__bg">
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(135deg, #2d1b4e 0%, #1a1a2e 50%, #16213e 100%)',
-          }}
+      {/* COL GAUCHE : photo d'Anas */}
+      <div className="ec-hero__img-col ec-hero__img-col--photo">
+        <img
+          src="/anas.jpg"
+          alt="Anas Ben Abdelmoumen"
+          className="ec-hero__photo"
         />
       </div>
 
-      <div className="ec-hero__content">
-        {/* Colonne gauche : logo + texte + réseaux */}
-        <div className="ec-hero__left">
-          {/* PLACEHOLDER : logo de l'échevin */}
+      {/* COL DROITE : nav empilée + contenu bordé */}
+      <div className="ec-hero__content-col">
+        <StackedNav />
+
+        <div className="ec-hero__box">
           <div className="ec-hero__logo">
-            <div
-              style={{
-                width: '320px',
-                maxWidth: '100%',
-                height: '95px',
-                borderRadius: '10px',
-                background: 'rgba(123, 19, 214, 0.3)',
-                border: '2px solid rgba(123, 19, 214, 0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'rgba(255,255,255,0.7)',
-                fontSize: '14px',
-                fontWeight: 600,
-              }}
-            >
-              LOGO
-            </div>
+            <Logo size="md" variant="dark" />
           </div>
 
           <div className="ec-hero__text">
-            <p className="ec-hero__line1">
-              {/* PLACEHOLDER : adapter le texte */}
-              Depuis [année], je suis{' '}
-              <strong>échevin de [Commune]</strong> en charge de la [compétence].
+            <p>
+              Depuis le 1<sup>er</sup> décembre 2024, je suis{' '}
+              <strong>échevin des Finances et de la Propreté publique</strong>{' '}
+              à la Ville de Bruxelles.
             </p>
-            <p className="ec-hero__line2">
-              {/* PLACEHOLDER : adapter la description */}
-              [Description du parcours], je suis aujourd&apos;hui{' '}
-              <strong>[fonction actuelle].</strong>
+            <p>
+              Socialiste engagé, né et élevé à Bruxelles, je mets mon énergie
+              au service des habitantes et habitants de{' '}
+              <strong>notre ville.</strong>
             </p>
           </div>
 
           <SocialRow />
         </div>
-
-        {/* Colonne droite : vide, laisse voir le background */}
-        <div className="ec-hero__right" />
       </div>
     </section>
   );

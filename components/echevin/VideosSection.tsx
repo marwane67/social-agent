@@ -1,94 +1,65 @@
 import Link from 'next/link';
 
-// PLACEHOLDER : remplacer par des données dynamiques
-const PLACEHOLDER_VIDEOS = [
-  {
-    date: '15 avril',
-    title: 'Titre de la vidéo mise en avant',
-    source: 'Média local',
-    duration: '23:39',
-    href: '#',
-    featured: true,
-  },
-  {
-    date: '10 avril',
-    title: 'Deuxième vidéo — Intervention au conseil',
-    source: 'Conseil communal',
-    duration: '12:17',
-    href: '#',
-  },
-  {
-    date: '5 avril',
-    title: 'Troisième vidéo — Sur le terrain',
-    source: 'Terrain',
-    duration: '10:24',
-    href: '#',
-  },
-  {
-    date: '1 avril',
-    title: 'Quatrième vidéo — Interview média',
-    source: 'TV locale',
-    duration: '20:55',
-    href: '#',
-  },
-  {
-    date: '28 mars',
-    title: 'Cinquième vidéo — Débat public',
-    source: 'Débat',
-    duration: '25:26',
-    href: '#',
-  },
+// PLACEHOLDER : a remplacer par les vraies videos
+const FEATURED_VIDEO = {
+  date: 'Mars 2025',
+  title: 'Tolérance zéro contre les dépôts clandestins',
+  source: 'Conseil communal',
+  duration: '8:20',
+  href: '#',
+};
+
+const VIDEOS = [
+  { date: 'Février 2025', title: 'Action Propreté–Police sur le terrain', source: 'Reportage', duration: '3:45', href: '#' },
+  { date: 'Janvier 2025', title: 'Bilan 2024 : 5 000 amendes', source: 'BX1', duration: '12:10', href: '#' },
+  { date: 'Décembre 2024', title: 'Prestation de serment', source: 'Ville de Bruxelles', duration: '4:30', href: '#' },
+  { date: 'Décembre 2024', title: 'Première interview comme échevin', source: 'RTBF', duration: '6:15', href: '#' },
 ];
 
 export default function VideosSection() {
-  const featured = PLACEHOLDER_VIDEOS.find((v) => v.featured);
-  const rest = PLACEHOLDER_VIDEOS.filter((v) => !v.featured);
-
   return (
     <section className="ec-videos">
       <div className="ec-videos__inner">
-        <div className="ec-videos__header">
-          <Link href="/echevin/videos" className="ec-videos__all">
-            toutes mes vidéos
-          </Link>
-        </div>
-
-        {/* Featured video */}
-        {featured && (
-          <div className="ec-videos__grid ec-videos__grid--featured" style={{ marginBottom: 24 }}>
-            <Link href={featured.href} className="ec-video-card ec-video-card--featured">
-              <div className="ec-video-card__thumb">
-                <div className="ec-video-card__thumb-placeholder">&#9654;</div>
-              </div>
-              <div className="ec-video-card__body">
-                <p className="ec-video-card__date">{featured.date}</p>
-                <h3 className="ec-video-card__title">{featured.title}</h3>
-                <div className="ec-video-card__meta">
-                  <span className="ec-video-card__source">{featured.source}</span>
-                  <span className="ec-video-card__duration">{featured.duration}</span>
+        <div className="ec-videos__container">
+          <div className="ec-videos__featured">
+            <div className="ec-videos__featured-left">
+              <div className="ec-videos__thumb-placeholder">&#9654;</div>
+              <Link href="/echevin/videos" className="ec-videos__all-btn">
+                toutes mes vidéos
+              </Link>
+            </div>
+            <div className="ec-videos__featured-right">
+              <Link href={FEATURED_VIDEO.href} className="ec-videos__featured-card">
+                <div className="ec-videos__featured-thumb">
+                  <div className="ec-videos__thumb-placeholder ec-videos__thumb-placeholder--large">&#9654;</div>
                 </div>
-              </div>
-            </Link>
+                <div className="ec-videos__featured-info">
+                  <p className="ec-videos__date">{FEATURED_VIDEO.date}</p>
+                  <h3 className="ec-videos__title">{FEATURED_VIDEO.title}</h3>
+                  <div className="ec-videos__meta">
+                    <span>{FEATURED_VIDEO.source}</span>
+                    <span>{FEATURED_VIDEO.duration}</span>
+                  </div>
+                </div>
+              </Link>
+            </div>
           </div>
-        )}
 
-        {/* Video grid */}
-        <div className="ec-videos__grid">
-          {rest.map((video, i) => (
-            <Link href={video.href} className="ec-video-card" key={i}>
-              <div className="ec-video-card__thumb">
-                <div className="ec-video-card__thumb-placeholder">&#9654;</div>
-              </div>
-              <div className="ec-video-card__body">
-                <p className="ec-video-card__date">{video.date}</p>
-                <h3 className="ec-video-card__title">{video.title}</h3>
-                <div className="ec-video-card__meta">
-                  <span className="ec-video-card__source">{video.source}</span>
-                  <span className="ec-video-card__duration">{video.duration}</span>
+          <div className="ec-videos__grid">
+            {VIDEOS.map((video, i) => (
+              <Link href={video.href} className="ec-videos__card" key={i}>
+                <div className="ec-videos__card-thumb">
+                  <div className="ec-videos__thumb-placeholder">&#9654;</div>
                 </div>
-              </div>
-            </Link>
-          ))}
+                <p className="ec-videos__date">{video.date}</p>
+                <h4 className="ec-videos__card-title">{video.title}</h4>
+                <div className="ec-videos__meta">
+                  <span>{video.source}</span>
+                  <span>{video.duration}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </section>

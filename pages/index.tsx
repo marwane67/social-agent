@@ -69,6 +69,7 @@ export default function Home() {
   const [enhancements, setEnhancements] = useState<Record<number, Enhancement>>({})
   const [enhLoading, setEnhLoading] = useState<Record<number, string>>({})
   const [activePanel, setActivePanel] = useState<Record<number, string>>({})
+  const [error, setError] = useState<string>('')
 
   useEffect(() => { try { const h = localStorage.getItem('social-agent-history'); if (h) setHistory(JSON.parse(h)) } catch {} }, [])
 
@@ -92,19 +93,37 @@ export default function Home() {
   const [multiMode, setMultiMode] = useState(false)
 
   const generate = async () => {
-    if (!input.trim()) return
+    if (!input.trim()) {
+      setError('Écris d\'abord un contexte (une décision, un chiffre, une galère...)')
+      return
+    }
+    setError('')
     setLoading(true); setPosts([]); setEnhancements({}); setActivePanel({})
     try {
       if (multiMode) {
         const res = await fetch('/api/multipost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea: input, network }) })
         const data = await res.json()
-        if (data.posts) { setPosts(data.posts.map((p: any) => ({ type: p.format, text: p.text }))); setEditTexts({}); setEditing(null); saveHistory(data.posts.map((p: any) => ({ type: p.format, text: p.text })), 'multi', input, network) }
+        if (data.posts) {
+          setPosts(data.posts.map((p: any) => ({ type: p.format, text: p.text })))
+          setEditTexts({}); setEditing(null)
+          saveHistory(data.posts.map((p: any) => ({ type: p.format, text: p.text })), 'multi', input, network)
+        } else {
+          setError(data.error || 'Erreur de génération. Réessaye.')
+        }
       } else {
         const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input, format, network }) })
         const data = await res.json()
-        if (data.posts) { setPosts(data.posts); setEditTexts({}); setEditing(null); saveHistory(data.posts, format, input, network) }
+        if (data.posts) {
+          setPosts(data.posts); setEditTexts({}); setEditing(null)
+          saveHistory(data.posts, format, input, network)
+        } else {
+          setError(data.error || 'Erreur de génération. Réessaye.')
+        }
       }
-    } catch (e) { console.error(e) } finally { setLoading(false) }
+    } catch (e) {
+      console.error(e)
+      setError('Connexion impossible. Vérifie ta clé OpenRouter.')
+    } finally { setLoading(false) }
   }
 
   const enhance = async (i: number, action: string) => {
@@ -177,7 +196,7 @@ export default function Home() {
           <div className="section">
             <label className="label">Contexte</label>
             <div className="input-wrap">
-              <textarea className="input" placeholder="Décris ce qui se passe : une décision, un chiffre, une galère, une victoire..." value={input} onChange={e => setInput(e.target.value)} rows={4} onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generate() }} />
+              <textarea className="input" placeholder="Décris ce qui se passe : une décision, un chiffre, une galère, une victoire..." value={input} onChange={e => { setInput(e.target.value); if (error) setError('') }} rows={4} onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generate() }} />
               <div className="starters">
                 {(STARTERS[format] || []).map(s => (
                   <button key={s} className="starter" onClick={() => setInput(p => p ? p + ' ' + s : s)}>{s}</button>
@@ -185,6 +204,9 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {/* Error */}
+          {error && <div className="error-msg">{error}</div>}
 
           {/* Generate */}
           <button className={`primary-btn ${loading ? 'btn-loading' : ''}`} onClick={generate} disabled={loading} style={{ '--accent': accent } as any}>
@@ -317,6 +339,9 @@ export default function Home() {
           .starters { display:flex; gap:4px; flex-wrap:wrap; padding:0 12px 10px; border-top:1px solid var(--border); padding-top:8px; }
           .starter { background:var(--card2); border:1px solid var(--border); border-radius:20px; padding:2px 8px; font-size:10px; color:var(--muted); cursor:pointer; font-family:var(--mono); }
           .starter:hover { border-color:${accent}; color:${accent}; }
+
+          /* Error */
+          .error-msg { font-size:12px; color:#f87171; padding:8px 12px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); border-radius:var(--radius-sm); }
 
           /* Generate */
           .primary-btn { width:100%; padding:12px; background:var(--text); color:var(--bg); border:none; border-radius:var(--radius); font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; }

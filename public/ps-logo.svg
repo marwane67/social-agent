@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" role="img" aria-label="Parti Socialiste">
+  <rect x="0" y="0" width="80" height="80" rx="6" fill="#E3001A"/>
+  <text x="40" y="60" text-anchor="middle" font-family="Montserrat, Helvetica, Arial, sans-serif" font-weight="900" font-style="italic" font-size="54" fill="#ffffff">ps</text>
+  <text x="92" y="36" font-family="Montserrat, Helvetica, Arial, sans-serif" font-weight="700" font-size="16" fill="#ffffff" letter-spacing="1">PARTI</text>
+  <text x="92" y="60" font-family="Montserrat, Helvetica, Arial, sans-serif" font-weight="700" font-size="16" fill="#ffffff" letter-spacing="1">SOCIALISTE</text>
+</svg>

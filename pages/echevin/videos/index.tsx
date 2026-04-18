@@ -1,65 +1,24 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import EchevinLayout from '../../../components/echevin/EchevinLayout';
+import PageHeader from '../../../components/echevin/PageHeader';
 
 const CATEGORIES = [
   { id: 'all', label: 'Tout' },
-  { id: 'interventions', label: 'Interventions' },
+  { id: 'conseil', label: 'Au conseil communal' },
   { id: 'medias', label: 'Médias' },
-  { id: 'conseil', label: 'Conseil communal' },
   { id: 'terrain', label: 'Sur le terrain' },
+  { id: 'interviews', label: 'Interviews' },
 ];
 
-// PLACEHOLDER : remplacer par des données dynamiques
+// PLACEHOLDER : a remplacer par les vraies videos d'Anas
 const PLACEHOLDER_VIDEOS = [
-  {
-    date: '15 avril 2026',
-    title: 'Titre de la première vidéo',
-    source: 'Média local',
-    duration: '23:39',
-    category: 'medias',
-    href: '#',
-  },
-  {
-    date: '10 avril 2026',
-    title: 'Intervention au conseil communal',
-    source: 'Conseil communal',
-    duration: '12:17',
-    category: 'conseil',
-    href: '#',
-  },
-  {
-    date: '5 avril 2026',
-    title: 'Visite de terrain — Quartier [nom]',
-    source: 'Sur le terrain',
-    duration: '10:24',
-    category: 'terrain',
-    href: '#',
-  },
-  {
-    date: '1 avril 2026',
-    title: 'Interview sur [sujet]',
-    source: 'TV locale',
-    duration: '20:55',
-    category: 'medias',
-    href: '#',
-  },
-  {
-    date: '28 mars 2026',
-    title: 'Intervention au conseil — Budget 2026',
-    source: 'Conseil communal',
-    duration: '25:26',
-    category: 'conseil',
-    href: '#',
-  },
-  {
-    date: '20 mars 2026',
-    title: 'Inauguration [lieu]',
-    source: 'Sur le terrain',
-    duration: '8:45',
-    category: 'terrain',
-    href: '#',
-  },
+  { date: 'Mars 2025', title: 'Intervention : tolérance zéro contre les dépôts clandestins', source: 'Conseil communal', duration: '8:20', category: 'conseil', href: '#' },
+  { date: 'Février 2025', title: 'Action sur le terrain avec la police', source: 'Reportage', duration: '3:45', category: 'terrain', href: '#' },
+  { date: 'Janvier 2025', title: 'Bilan 2024 : 5 000 amendes pour dépôts clandestins', source: 'BX1', duration: '12:10', category: 'medias', href: '#' },
+  { date: 'Décembre 2024', title: 'Prestation de serment — Ville de Bruxelles', source: 'Ville de Bruxelles', duration: '4:30', category: 'conseil', href: '#' },
+  { date: 'Décembre 2024', title: 'Première interview comme échevin', source: 'RTBF', duration: '6:15', category: 'interviews', href: '#' },
+  { date: 'Octobre 2024', title: 'Campagne communale — Neder-Over-Heembeek', source: 'Campagne', duration: '2:40', category: 'terrain', href: '#' },
 ];
 
 export default function EchevinVideos() {
@@ -72,14 +31,12 @@ export default function EchevinVideos() {
 
   return (
     <EchevinLayout
-      title="Vidéos — Prénom Nom"
-      description="Toutes les vidéos de Prénom Nom, Échevin de [Commune]."
+      title="Vidéos — Anas Ben Abdelmoumen"
+      description="Toutes les vidéos d'Anas Ben Abdelmoumen, échevin à la Ville de Bruxelles."
     >
+      <PageHeader surtitle="Mes vidéos" title="Vidéos" image="/anas.jpg" />
       <section className="ec-videos-page">
         <div className="ec-videos-page__inner">
-          <p className="ec-videos-page__surtitle">MES VIDÉOS</p>
-          <h1 className="ec-videos-page__title">Vidéos</h1>
-
           <div className="ec-videos-page__tabs">
             {CATEGORIES.map((cat) => (
               <button

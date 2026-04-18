@@ -10,8 +10,8 @@ interface EchevinLayoutProps {
 
 export default function EchevinLayout({
   children,
-  title = 'Échevin — Site officiel',
-  description = 'Site officiel de l\'échevin de [Commune]',
+  title = 'Anas Ben Abdelmoumen — Échevin à la Ville de Bruxelles',
+  description = "Site officiel d'Anas Ben Abdelmoumen, échevin des Finances et de la Propreté publique à la Ville de Bruxelles (PS).",
 }: EchevinLayoutProps) {
   return (
     <div className="ec-site">

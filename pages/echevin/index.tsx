@@ -9,13 +9,13 @@ import ContactSection from '../../components/echevin/ContactSection';
 export default function EchevinHome() {
   return (
     <EchevinLayout
-      title="Prénom Nom — Échevin de [Commune]"
-      description="Site officiel de Prénom Nom, Échevin de [Commune]. Actualités, vidéos, contact."
+      title="Anas Ben Abdelmoumen — Échevin à la Ville de Bruxelles"
+      description="Site officiel d'Anas Ben Abdelmoumen, échevin des Finances et de la Propreté publique à la Ville de Bruxelles (PS). Actualités, vidéos, contact."
     >
       <Hero />
       <Newsletter />
       <FeaturedNote />
-      <NotesList />
+      <NotesList limit={4} showMore moreHref="/echevin/notes" />
       <VideosSection />
       <ContactSection />
     </EchevinLayout>
