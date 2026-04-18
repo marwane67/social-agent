@@ -2,20 +2,20 @@
    RESPONSIVE — Mobile + iPad
    ============================================================ */
 
-/* Scroll progress bar (used on Bio) */
+/* Scroll progress bar (Bompard-style: thin fixed top bar, red PS) */
 .ec-scroll-progress {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 4px;
-  background: transparent;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.06);
   z-index: 2500;
   pointer-events: none;
 }
 .ec-scroll-progress__bar {
   height: 100%;
-  background: linear-gradient(90deg, #e30613 0%, #ff2a2a 100%);
-  box-shadow: 0 0 8px rgba(227, 6, 19, 0.6);
-  transition: width 0.08s linear;
+  background: #e30613;
+  transition: width 0.05s linear;
+  will-change: width;
 }
 
 /* Hamburger (hidden by default on desktop) */
@@ -211,7 +211,12 @@
   .ec-videos__all-btn { font-size: 13px; padding: 10px 14px; }
   .ec-videos__grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
 
-  .ec-contact__inner { padding: 40px 4%; }
+  .ec-contact__inner {
+    padding: 40px 4% 48px;
+    min-height: 720px;
+  }
+  .ec-contact__bg { inset: 0 !important; }
+  .ec-contact__bg-img { width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center !important; }
   .ec-contact__box {
     width: 100%;
     max-width: 520px;
