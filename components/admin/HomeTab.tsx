@@ -5,6 +5,7 @@ type Hero = { surtitle: string; title: string; tagline: string; image_path: stri
 type Newsletter = { enabled: boolean; label: string; placeholder: string; button: string };
 type Featured = { mode: 'auto' | 'manual' | 'hidden'; article_id: string | null; image_path: string | null };
 type Contact = { enabled: boolean; title: string; intro_html: string; image_path: string | null };
+type HeaderImg = { image_path: string | null };
 
 const DEFAULTS = {
   hero: {
@@ -27,6 +28,9 @@ const DEFAULTS = {
       "<p>Pour toute question relative à l'échevinat des Finances ou de la Propreté publique, vous pouvez me joindre à la <strong>Ville de Bruxelles</strong>.</p>",
     image_path: '/bruxelles.jpg',
   } as Contact,
+  notes_header: { image_path: '/anas.jpg' } as HeaderImg,
+  videos_header: { image_path: '/anas.jpg' } as HeaderImg,
+  bio_header: { image_path: '/anas.jpg' } as HeaderImg,
 };
 
 function resolve(path: string | null): string {
@@ -40,6 +44,9 @@ export default function HomeTab() {
   const [newsletter, setNewsletter] = useState<Newsletter>(DEFAULTS.newsletter);
   const [featured, setFeatured] = useState<Featured>(DEFAULTS.featured);
   const [contact, setContact] = useState<Contact>(DEFAULTS.contact);
+  const [notesHeader, setNotesHeader] = useState<HeaderImg>(DEFAULTS.notes_header);
+  const [videosHeader, setVideosHeader] = useState<HeaderImg>(DEFAULTS.videos_header);
+  const [bioHeader, setBioHeader] = useState<HeaderImg>(DEFAULTS.bio_header);
   const [articles, setArticles] = useState<{ id: string; title: string; source: string; date: string }[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -55,6 +62,9 @@ export default function HomeTab() {
     setNewsletter({ ...DEFAULTS.newsletter, ...(byKey.newsletter || {}) });
     setFeatured({ ...DEFAULTS.featured, ...(byKey.featured || {}) });
     setContact({ ...DEFAULTS.contact, ...(byKey.contact || {}) });
+    setNotesHeader({ ...DEFAULTS.notes_header, ...(byKey.notes_header || {}) });
+    setVideosHeader({ ...DEFAULTS.videos_header, ...(byKey.videos_header || {}) });
+    setBioHeader({ ...DEFAULTS.bio_header, ...(byKey.bio_header || {}) });
     setArticles((a.items || []).map((x: any) => ({ id: x.id, title: x.title, source: x.source, date: x.date })));
   }
   useEffect(() => {
@@ -294,6 +304,43 @@ export default function HomeTab() {
           )}
         </label>
       </div>
+
+      {/* PAGE HEADERS (images de bannière) */}
+      {([
+        { key: 'notes_header', label: 'Actualités — image de bannière', state: notesHeader, setState: setNotesHeader },
+        { key: 'videos_header', label: 'Vidéos — image de bannière', state: videosHeader, setState: setVideosHeader },
+        { key: 'bio_header', label: 'Bio — image de bannière', state: bioHeader, setState: setBioHeader },
+      ] as const).map(({ key, label, state, setState }) => (
+        <div className="ec-admin-bio-card" key={key}>
+          <div className="ec-admin-section-head">
+            <h3>{label}</h3>
+            <button
+              className="primary"
+              disabled={busy === key}
+              onClick={() => saveKey(key, state, label)}
+            >
+              {busy === key ? '…' : 'Enregistrer'}
+            </button>
+          </div>
+          <label>
+            Image en haut de la page
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => pickImage(e, `${key}-upload`, (path) => setState({ image_path: path }))}
+            />
+            {busy === `${key}-upload` && <div style={{ fontSize: 13, opacity: 0.7 }}>Upload…</div>}
+            {state.image_path && (
+              <div className="ec-admin-preview">
+                <img src={resolve(state.image_path)} alt="" />
+                <button type="button" onClick={() => setState({ image_path: '/anas.jpg' })}>
+                  Réinitialiser
+                </button>
+              </div>
+            )}
+          </label>
+        </div>
+      ))}
     </div>
   );
 }

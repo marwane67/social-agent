@@ -68,12 +68,21 @@ export type ContactSettings = {
   image_url: string;
 };
 
+export type PageHeaderImage = { image_path: string | null; image_url: string };
+
 export type HomeSettings = {
   hero: HeroSettings;
   newsletter: NewsletterSettings;
   featured: FeaturedSettings;
   contact: ContactSettings;
 };
+
+export async function getPageHeaderImage(key: 'notes_header' | 'videos_header' | 'bio_header'): Promise<PageHeaderImage> {
+  const { data } = await sbPublic.from('settings').select('value').eq('key', key).maybeSingle();
+  const v = (data?.value ?? {}) as any;
+  const image_path = v.image_path ?? '/anas.jpg';
+  return { image_path, image_url: mediaUrl(image_path) };
+}
 
 function mapArticle(r: any): Article {
   return {

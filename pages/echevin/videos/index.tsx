@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import EchevinLayout from '../../../components/echevin/EchevinLayout';
 import PageHeader from '../../../components/echevin/PageHeader';
-import { getVideos, type Video } from '../../../lib/content';
+import { getVideos, getPageHeaderImage, type Video } from '../../../lib/content';
 
 const CATEGORIES = [
   { id: 'all', label: 'Tout' },
@@ -12,7 +12,7 @@ const CATEGORIES = [
   { id: 'interviews', label: 'Interviews' },
 ];
 
-export default function EchevinVideos({ videos }: { videos: Video[] }) {
+export default function EchevinVideos({ videos, headerImage }: { videos: Video[]; headerImage: string }) {
   const [activeCategory, setActiveCategory] = useState('all');
 
   const filtered =
@@ -23,7 +23,7 @@ export default function EchevinVideos({ videos }: { videos: Video[] }) {
       title="Vidéos — Anas Ben Abdelmoumen"
       description="Toutes les vidéos d'Anas Ben Abdelmoumen, échevin à la Ville de Bruxelles."
     >
-      <PageHeader surtitle="Mes vidéos" title="Vidéos" image="/anas.jpg" />
+      <PageHeader surtitle="Mes vidéos" title="Vidéos" image={headerImage} />
       <section className="ec-videos-page">
         <div className="ec-videos-page__inner">
           <div className="ec-videos-page__tabs">
@@ -78,6 +78,6 @@ export default function EchevinVideos({ videos }: { videos: Video[] }) {
 }
 
 export const getServerSideProps: GetServerSideProps = async () => {
-  const videos = await getVideos();
-  return { props: { videos } };
+  const [videos, header] = await Promise.all([getVideos(), getPageHeaderImage('videos_header')]);
+  return { props: { videos, headerImage: header.image_url || '/anas.jpg' } };
 };
