@@ -2,6 +2,22 @@
    RESPONSIVE — Mobile + iPad
    ============================================================ */
 
+/* Scroll progress bar (used on Bio) */
+.ec-scroll-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: transparent;
+  z-index: 2500;
+  pointer-events: none;
+}
+.ec-scroll-progress__bar {
+  height: 100%;
+  background: linear-gradient(90deg, #e30613 0%, #ff2a2a 100%);
+  box-shadow: 0 0 8px rgba(227, 6, 19, 0.6);
+  transition: width 0.08s linear;
+}
+
 /* Hamburger (hidden by default on desktop) */
 .ec-nav__burger {
   display: none;
@@ -219,8 +235,12 @@
   .ec-videos-page__tabs { gap: 8px; }
   .ec-videos-page__tab { padding: 8px 14px; font-size: 13px; }
 
-  .ec-page-header { min-height: 42vh; padding: 80px 24px 32px; }
-  .ec-page-header__title { font-size: 56px; }
+  .ec-page-header {
+    min-height: 0;
+    padding: 10px 4% 24px;
+  }
+  .ec-page-header__content { margin-top: 180px; padding: 20px 0 12px; }
+  .ec-page-header__title { font-size: 52px; }
 
   .ec-bio__content p { font-size: 16px; line-height: 1.6; }
 }

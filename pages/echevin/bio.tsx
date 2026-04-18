@@ -1,6 +1,7 @@
 import type { GetServerSideProps } from 'next';
 import EchevinLayout from '../../components/echevin/EchevinLayout';
 import PageHeader from '../../components/echevin/PageHeader';
+import ScrollProgress from '../../components/echevin/ScrollProgress';
 import { getBio, type BioSection } from '../../lib/content';
 
 export default function EchevinBio({ sections }: { sections: BioSection[] }) {
@@ -9,6 +10,7 @@ export default function EchevinBio({ sections }: { sections: BioSection[] }) {
       title="Bio — Anas Ben Abdelmoumen"
       description="Biographie d'Anas Ben Abdelmoumen, échevin des Finances et de la Propreté publique à la Ville de Bruxelles."
     >
+      <ScrollProgress />
       <PageHeader surtitle="À propos" title="Bio" image="/anas.jpg" />
 
       <section className="ec-bio">

@@ -1,4 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - react-dom types may not be installed, createPortal exists at runtime
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Logo from './Logo';
@@ -34,6 +37,8 @@ export default function StackedNav({ floating = false }: Props) {
   const [allNotes, setAllNotes] = useState<SearchNote[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     // Close mobile menu on route change
@@ -171,7 +176,7 @@ export default function StackedNav({ floating = false }: Props) {
         </div>
       </div>
 
-      {menuOpen && (
+      {menuOpen && mounted && createPortal(
         <div className="ec-mobile-menu" role="dialog" aria-modal="true">
           <div className="ec-mobile-menu__header">
             <Link href={HOME_HREF} className="ec-mobile-menu__brand" onClick={() => setMenuOpen(false)}>
@@ -231,7 +236,8 @@ export default function StackedNav({ floating = false }: Props) {
               </ul>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {open && query.trim() && (
