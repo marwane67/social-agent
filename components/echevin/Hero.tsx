@@ -4,13 +4,13 @@ import StackedNav from './StackedNav';
 import type { HeroSettings } from '../../lib/content';
 
 export default function Hero({ hero }: { hero?: HeroSettings }) {
-  void hero; // reserved for future use
+  const photoSrc = hero?.image_url || '/anas.jpg';
   return (
     <section className="ec-hero">
       {/* COL GAUCHE : photo d'Anas */}
       <div className="ec-hero__img-col ec-hero__img-col--photo">
         <img
-          src="/anas.jpg"
+          src={photoSrc}
           alt="Anas Ben Abdelmoumen"
           className="ec-hero__photo"
         />

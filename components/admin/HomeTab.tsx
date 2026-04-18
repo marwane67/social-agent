@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api, uploadFile } from './api';
 
-type Hero = { surtitle: string; title: string; tagline: string };
+type Hero = { surtitle: string; title: string; tagline: string; image_path: string | null };
 type Newsletter = { enabled: boolean; label: string; placeholder: string; button: string };
-type Featured = { mode: 'auto' | 'manual' | 'hidden'; article_id: string | null };
+type Featured = { mode: 'auto' | 'manual' | 'hidden'; article_id: string | null; image_path: string | null };
 type Contact = { enabled: boolean; title: string; intro_html: string; image_path: string | null };
 
 const DEFAULTS = {
@@ -11,6 +11,7 @@ const DEFAULTS = {
     surtitle: 'ÉCHEVIN DES FINANCES ET DE LA PROPRETÉ PUBLIQUE',
     title: 'ANAS BEN ABDELMOUMEN',
     tagline: 'VILLE DE BRUXELLES',
+    image_path: '/anas.jpg',
   } as Hero,
   newsletter: {
     enabled: true,
@@ -18,7 +19,7 @@ const DEFAULTS = {
     placeholder: 'votre adresse mail',
     button: "je m'abonne",
   } as Newsletter,
-  featured: { mode: 'auto', article_id: null } as Featured,
+  featured: { mode: 'auto', article_id: null, image_path: null } as Featured,
   contact: {
     enabled: true,
     title: 'Me contacter',
@@ -74,17 +75,22 @@ export default function HomeTab() {
     }
   }
 
-  async function pickContactImage(e: React.ChangeEvent<HTMLInputElement>) {
+  async function pickImage(
+    e: React.ChangeEvent<HTMLInputElement>,
+    busyKey: string,
+    onPath: (path: string) => void,
+  ) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setBusy('contact-upload');
+    setBusy(busyKey);
     try {
       const { path } = await uploadFile(f);
-      setContact({ ...contact, image_path: path });
+      onPath(path);
     } catch (err: any) {
       alert('Upload échoué : ' + err.message);
     } finally {
       setBusy(null);
+      e.target.value = '';
     }
   }
 
@@ -118,6 +124,23 @@ export default function HomeTab() {
         <label>
           Tagline
           <input value={hero.tagline} onChange={(e) => setHero({ ...hero, tagline: e.target.value })} />
+        </label>
+        <label>
+          Photo du héro (grande image à gauche)
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => pickImage(e, 'hero-upload', (path) => setHero({ ...hero, image_path: path }))}
+          />
+          {busy === 'hero-upload' && <div style={{ fontSize: 13, opacity: 0.7 }}>Upload…</div>}
+          {hero.image_path && (
+            <div className="ec-admin-preview">
+              <img src={resolve(hero.image_path)} alt="" />
+              <button type="button" onClick={() => setHero({ ...hero, image_path: '/anas.jpg' })}>
+                Réinitialiser
+              </button>
+            </div>
+          )}
         </label>
       </div>
 
@@ -194,6 +217,31 @@ export default function HomeTab() {
             </select>
           </label>
         )}
+        {featured.mode !== 'hidden' && (
+          <label>
+            Image personnalisée (remplace celle de l’article)
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) =>
+                pickImage(e, 'featured-upload', (path) => setFeatured({ ...featured, image_path: path }))
+              }
+            />
+            {busy === 'featured-upload' && <div style={{ fontSize: 13, opacity: 0.7 }}>Upload…</div>}
+            {featured.image_path ? (
+              <div className="ec-admin-preview">
+                <img src={resolve(featured.image_path)} alt="" />
+                <button type="button" onClick={() => setFeatured({ ...featured, image_path: null })}>
+                  Utiliser l’image de l’article
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, opacity: 0.65, marginTop: 4 }}>
+                Par défaut, l’image de l’article est utilisée.
+              </div>
+            )}
+          </label>
+        )}
       </div>
 
       {/* CONTACT */}
@@ -230,7 +278,11 @@ export default function HomeTab() {
         </label>
         <label>
           Image d’arrière-plan
-          <input type="file" accept="image/*" onChange={pickContactImage} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => pickImage(e, 'contact-upload', (path) => setContact({ ...contact, image_path: path }))}
+          />
           {busy === 'contact-upload' && <div style={{ fontSize: 13, opacity: 0.7 }}>Upload…</div>}
           {contact.image_path && (
             <div className="ec-admin-preview">

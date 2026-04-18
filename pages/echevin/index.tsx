@@ -32,7 +32,7 @@ export default function EchevinHome({ articles, featured, videos, settings }: Pr
     >
       <Hero hero={settings.hero} />
       <Newsletter settings={settings.newsletter} />
-      <FeaturedNote featured={featured} />
+      <FeaturedNote featured={featured} imageOverride={settings.featured.image_url || null} />
       <NotesList articles={rest} limit={4} showMore moreHref="/echevin/notes" />
       <VideosSection videos={videos.slice(0, 4)} />
       <ContactSection settings={settings.contact} />

@@ -42,6 +42,8 @@ export type HeroSettings = {
   surtitle: string;
   title: string;
   tagline: string;
+  image_path: string | null;
+  image_url: string;
 };
 
 export type NewsletterSettings = {
@@ -54,6 +56,8 @@ export type NewsletterSettings = {
 export type FeaturedSettings = {
   mode: 'auto' | 'manual' | 'hidden';
   article_id: string | null;
+  image_path: string | null;
+  image_url: string;
 };
 
 export type ContactSettings = {
@@ -134,11 +138,14 @@ export async function getBio(): Promise<BioSection[]> {
 
 export async function getHero(): Promise<HeroSettings> {
   const { data } = await sbPublic.from('settings').select('value').eq('key', 'hero').maybeSingle();
-  const v = (data?.value ?? {}) as Partial<HeroSettings>;
+  const v = (data?.value ?? {}) as any;
+  const image_path = v.image_path ?? '/anas.jpg';
   return {
     surtitle: v.surtitle ?? 'ÉCHEVIN DES FINANCES ET DE LA PROPRETÉ PUBLIQUE',
     title: v.title ?? 'ANAS BEN ABDELMOUMEN',
     tagline: v.tagline ?? 'VILLE DE BRUXELLES',
+    image_path,
+    image_url: mediaUrl(image_path),
   };
 }
 
@@ -146,10 +153,13 @@ export async function getHomeSettings(): Promise<HomeSettings> {
   const { data } = await sbPublic.from('settings').select('key,value');
   const map: Record<string, any> = {};
   (data || []).forEach((r: any) => (map[r.key] = r.value));
+  const heroImgPath = map.hero?.image_path ?? '/anas.jpg';
   const hero: HeroSettings = {
     surtitle: map.hero?.surtitle ?? 'ÉCHEVIN DES FINANCES ET DE LA PROPRETÉ PUBLIQUE',
     title: map.hero?.title ?? 'ANAS BEN ABDELMOUMEN',
     tagline: map.hero?.tagline ?? 'VILLE DE BRUXELLES',
+    image_path: heroImgPath,
+    image_url: mediaUrl(heroImgPath),
   };
   const newsletter: NewsletterSettings = {
     enabled: map.newsletter?.enabled ?? true,
@@ -157,9 +167,12 @@ export async function getHomeSettings(): Promise<HomeSettings> {
     placeholder: map.newsletter?.placeholder ?? 'votre adresse mail',
     button: map.newsletter?.button ?? "je m'abonne",
   };
+  const featuredImgPath = map.featured?.image_path ?? null;
   const featured: FeaturedSettings = {
     mode: map.featured?.mode ?? 'auto',
     article_id: map.featured?.article_id ?? null,
+    image_path: featuredImgPath,
+    image_url: mediaUrl(featuredImgPath),
   };
   const contactRaw = map.contact || {};
   const contact: ContactSettings = {
