@@ -33,6 +33,23 @@ export default function StackedNav({ floating = false }: Props) {
   const [query, setQuery] = useState('');
   const [allNotes, setAllNotes] = useState<SearchNote[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // Close mobile menu on route change
+    const onRoute = () => setMenuOpen(false);
+    router.events.on('routeChangeStart', onRoute);
+    return () => router.events.off('routeChangeStart', onRoute);
+  }, [router.events]);
+
+  useEffect(() => {
+    // Lock body scroll when mobile menu is open
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!open || loaded) return;
@@ -69,11 +86,25 @@ export default function StackedNav({ floating = false }: Props) {
       <div className="ec-nav-layer ec-nav-layer--purple">
         <div className="ec-nav-layer ec-nav-layer--red">
           <div className="ec-nav-layer ec-nav-layer--black">
-            {floating && (
-              <Link href={HOME_HREF} className="ec-nav__logo" aria-label="Accueil">
-                <Logo size="sm" variant="light" />
-              </Link>
-            )}
+            <Link
+              href={HOME_HREF}
+              className={`ec-nav__logo${floating ? '' : ' ec-nav__logo--mobile'}`}
+              aria-label="Accueil"
+            >
+              <Logo size="sm" variant="light" />
+            </Link>
+
+            <button
+              className="ec-nav__burger"
+              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+
             <nav className="ec-nav">
               {NAV_ITEMS.map((item) =>
                 item.children ? (
@@ -139,6 +170,69 @@ export default function StackedNav({ floating = false }: Props) {
           </div>
         </div>
       </div>
+
+      {menuOpen && (
+        <div className="ec-mobile-menu" role="dialog" aria-modal="true">
+          <div className="ec-mobile-menu__header">
+            <Link href={HOME_HREF} className="ec-mobile-menu__brand" onClick={() => setMenuOpen(false)}>
+              <Logo size="md" variant="light" />
+            </Link>
+            <button
+              className="ec-mobile-menu__close"
+              aria-label="Fermer"
+              onClick={() => setMenuOpen(false)}
+            >
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <nav className="ec-mobile-menu__nav">
+            <Link href={HOME_HREF} onClick={() => setMenuOpen(false)}>Accueil</Link>
+            {NAV_ITEMS.map((item) => (
+              <div key={item.label}>
+                <Link href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</Link>
+                {item.children && (
+                  <div className="ec-mobile-menu__sub">
+                    {item.children.map((c) => (
+                      <Link key={c.label} href={c.href} onClick={() => setMenuOpen(false)}>
+                        {c.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+          <div className="ec-mobile-menu__search">
+            <input
+              type="search"
+              placeholder="Rechercher une actualité…"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                if (!open) setOpen(true);
+              }}
+            />
+            {query.trim() && (
+              <ul className="ec-mobile-menu__results">
+                {matches.length === 0 ? (
+                  <li className="ec-mobile-menu__empty">Aucun résultat</li>
+                ) : (
+                  matches.map((n) => (
+                    <li key={n.id}>
+                      <a href={n.href} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
+                        <strong>{n.source}</strong> — {n.title}
+                      </a>
+                    </li>
+                  ))
+                )}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {open && query.trim() && (
         <div className="ec-search__results">
