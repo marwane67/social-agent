@@ -21,6 +21,7 @@
   font-size: 24px;
   font-style: italic;
   text-transform: uppercase;
+  color: #111;
 }
 .ec-admin-login__card p { color: #666; margin: 0 0 20px; font-size: 14px; }
 .ec-admin-login__card input {
@@ -31,7 +32,10 @@
   font-size: 15px;
   margin-bottom: 12px;
   box-sizing: border-box;
+  color: #111;
+  background: #fff;
 }
+.ec-admin-login__card input::placeholder { color: #999; }
 .ec-admin-login__card input:focus { outline: none; border-color: #FF0000; }
 .ec-admin-login__card button {
   width: 100%;
@@ -244,7 +248,15 @@
   font-family: inherit;
   box-sizing: border-box;
   background: #fff;
+  color: #111;
 }
+.ec-admin-modal__card input::placeholder,
+.ec-admin-modal__card textarea::placeholder { color: #999; }
+.ec-admin-bio-card input,
+.ec-admin-bio-card textarea,
+.ec-admin-bio-card select { color: #111; background: #fff; }
+.ec-admin-bio-card input::placeholder,
+.ec-admin-bio-card textarea::placeholder { color: #999; }
 .ec-admin-modal__card textarea { resize: vertical; }
 .ec-admin-modal__card input:focus,
 .ec-admin-modal__card select:focus,
