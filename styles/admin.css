@@ -413,3 +413,45 @@
 }
 .ec-admin-section-head button:disabled { opacity: 0.5; cursor: default; }
 
+/* Autofill card inside article modal */
+.ec-admin-autofill {
+  background: #fff8e1;
+  border: 1.5px dashed #f5b700;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+.ec-admin-autofill__row {
+  display: flex;
+  gap: 8px;
+}
+.ec-admin-autofill__row input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1.5px solid #e8c86a;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  color: #111;
+  box-sizing: border-box;
+}
+.ec-admin-autofill__row button {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ec-admin-autofill__row button.primary { background: #FF0000; }
+.ec-admin-autofill__row button:disabled { opacity: 0.5; cursor: default; }
+.ec-admin-autofill__hint {
+  font-size: 12px;
+  color: #8a6d00;
+  margin-top: 8px;
+  font-weight: 500;
+}
+

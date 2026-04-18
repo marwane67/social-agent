@@ -33,6 +33,8 @@ export default function ArticlesTab() {
   const [editing, setEditing] = useState<Article | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [fetchUrl, setFetchUrl] = useState('');
+  const [fetching, setFetching] = useState(false);
 
   async function load() {
     const j = await api('GET', '/api/admin/articles');
@@ -79,6 +81,29 @@ export default function ArticlesTab() {
       api('PATCH', '/api/admin/articles', { id: swap.id, position: items[idx].position }),
     ]);
     load();
+  }
+
+  async function autofill() {
+    if (!fetchUrl.trim() || !editing) return;
+    setFetching(true);
+    try {
+      const j = await api('POST', '/api/admin/fetch-url', { url: fetchUrl.trim() });
+      setEditing({
+        ...editing,
+        title: j.title || editing.title,
+        excerpt: j.excerpt || editing.excerpt,
+        source: j.source || editing.source,
+        date: j.date || editing.date,
+        sort_date: j.sort_date || editing.sort_date,
+        image_path: j.image_path || j.image_external || editing.image_path,
+        href: j.href || fetchUrl.trim(),
+      });
+      setFetchUrl('');
+    } catch (e: any) {
+      alert('Extraction échouée : ' + e.message);
+    } finally {
+      setFetching(false);
+    }
   }
 
   async function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -138,6 +163,33 @@ export default function ArticlesTab() {
         <div className="ec-admin-modal" onClick={() => !busy && setEditing(null)}>
           <div className="ec-admin-modal__card" onClick={(e) => e.stopPropagation()}>
             <h3>{editing.id ? 'Modifier l’article' : 'Nouvel article'}</h3>
+
+            <div className="ec-admin-autofill">
+              <label style={{ marginBottom: 8 }}>
+                ⚡ Auto-remplir depuis un lien
+              </label>
+              <div className="ec-admin-autofill__row">
+                <input
+                  type="url"
+                  placeholder="https://www.lesoir.be/..."
+                  value={fetchUrl}
+                  onChange={(e) => setFetchUrl(e.target.value)}
+                  disabled={fetching}
+                />
+                <button
+                  type="button"
+                  onClick={autofill}
+                  disabled={fetching || !fetchUrl.trim()}
+                  className="primary"
+                >
+                  {fetching ? 'Extraction…' : 'Extraire'}
+                </button>
+              </div>
+              <div className="ec-admin-autofill__hint">
+                Colle l’URL d’un article : titre, extrait, source, date et couverture sont récupérés automatiquement.
+              </div>
+            </div>
+
             <label>
               Titre
               <input
