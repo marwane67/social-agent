@@ -373,3 +373,31 @@
   .ec-admin-grid2 { grid-template-columns: 1fr; }
   .ec-admin-modal { padding: 20px 10px; }
 }
+
+/* Admin section head */
+.ec-admin-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+.ec-admin-section-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.ec-admin-section-head button {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #FF0000;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+.ec-admin-section-head button:disabled { opacity: 0.5; cursor: default; }
+

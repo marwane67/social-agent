@@ -6,9 +6,9 @@ import { isAuthedSSR } from '../../../lib/auth';
 import ArticlesTab from '../../../components/admin/ArticlesTab';
 import VideosTab from '../../../components/admin/VideosTab';
 import BioTab from '../../../components/admin/BioTab';
-import SettingsTab from '../../../components/admin/SettingsTab';
+import HomeTab from '../../../components/admin/HomeTab';
 
-type Tab = 'articles' | 'videos' | 'bio' | 'settings';
+type Tab = 'articles' | 'videos' | 'bio' | 'home';
 
 export default function AdminHome() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function AdminHome() {
 
   useEffect(() => {
     const t = router.query.tab as Tab | undefined;
-    if (t && ['articles', 'videos', 'bio', 'settings'].includes(t)) setTab(t);
+    if (t && ['articles', 'videos', 'bio', 'home'].includes(t)) setTab(t);
   }, [router.query.tab]);
 
   return (
@@ -44,8 +44,8 @@ export default function AdminHome() {
             <button className={tab === 'bio' ? 'is-active' : ''} onClick={() => setTab('bio')}>
               Bio
             </button>
-            <button className={tab === 'settings' ? 'is-active' : ''} onClick={() => setTab('settings')}>
-              Paramètres
+            <button className={tab === 'home' ? 'is-active' : ''} onClick={() => setTab('home')}>
+              Accueil
             </button>
           </nav>
           <div className="ec-admin__actions">
@@ -61,7 +61,7 @@ export default function AdminHome() {
           {tab === 'articles' && <ArticlesTab />}
           {tab === 'videos' && <VideosTab />}
           {tab === 'bio' && <BioTab />}
-          {tab === 'settings' && <SettingsTab />}
+          {tab === 'home' && <HomeTab />}
         </main>
       </div>
     </>

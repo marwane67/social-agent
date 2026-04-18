@@ -44,6 +44,33 @@ export type HeroSettings = {
   tagline: string;
 };
 
+export type NewsletterSettings = {
+  enabled: boolean;
+  label: string;
+  placeholder: string;
+  button: string;
+};
+
+export type FeaturedSettings = {
+  mode: 'auto' | 'manual' | 'hidden';
+  article_id: string | null;
+};
+
+export type ContactSettings = {
+  enabled: boolean;
+  title: string;
+  intro_html: string;
+  image_path: string | null;
+  image_url: string;
+};
+
+export type HomeSettings = {
+  hero: HeroSettings;
+  newsletter: NewsletterSettings;
+  featured: FeaturedSettings;
+  contact: ContactSettings;
+};
+
 function mapArticle(r: any): Article {
   return {
     id: r.id,
@@ -113,4 +140,60 @@ export async function getHero(): Promise<HeroSettings> {
     title: v.title ?? 'ANAS BEN ABDELMOUMEN',
     tagline: v.tagline ?? 'VILLE DE BRUXELLES',
   };
+}
+
+export async function getHomeSettings(): Promise<HomeSettings> {
+  const { data } = await sbPublic.from('settings').select('key,value');
+  const map: Record<string, any> = {};
+  (data || []).forEach((r: any) => (map[r.key] = r.value));
+  const hero: HeroSettings = {
+    surtitle: map.hero?.surtitle ?? 'ÉCHEVIN DES FINANCES ET DE LA PROPRETÉ PUBLIQUE',
+    title: map.hero?.title ?? 'ANAS BEN ABDELMOUMEN',
+    tagline: map.hero?.tagline ?? 'VILLE DE BRUXELLES',
+  };
+  const newsletter: NewsletterSettings = {
+    enabled: map.newsletter?.enabled ?? true,
+    label: map.newsletter?.label ?? 'MA NEWSLETTER',
+    placeholder: map.newsletter?.placeholder ?? 'votre adresse mail',
+    button: map.newsletter?.button ?? "je m'abonne",
+  };
+  const featured: FeaturedSettings = {
+    mode: map.featured?.mode ?? 'auto',
+    article_id: map.featured?.article_id ?? null,
+  };
+  const contactRaw = map.contact || {};
+  const contact: ContactSettings = {
+    enabled: contactRaw.enabled ?? true,
+    title: contactRaw.title ?? 'Me contacter',
+    intro_html:
+      contactRaw.intro_html ??
+      "<p>Pour toute question relative à l'échevinat des Finances ou de la Propreté publique, vous pouvez me joindre à la <strong>Ville de Bruxelles</strong>.</p>",
+    image_path: contactRaw.image_path ?? '/bruxelles.jpg',
+    image_url: mediaUrl(contactRaw.image_path ?? '/bruxelles.jpg'),
+  };
+  return { hero, newsletter, featured, contact };
+}
+
+export async function getFeaturedArticle(settings: FeaturedSettings, fallback: Article[]): Promise<Article | null> {
+  if (settings.mode === 'hidden') return null;
+  if (settings.mode === 'manual' && settings.article_id) {
+    const { data } = await sbPublic.from('articles').select('*').eq('id', settings.article_id).eq('published', true).maybeSingle();
+    if (data) {
+      return {
+        id: data.id,
+        title: data.title,
+        source: data.source,
+        date: data.date,
+        sort_date: data.sort_date,
+        excerpt: data.excerpt,
+        href: data.href,
+        image_path: data.image_path,
+        image_url: mediaUrl(data.image_path),
+        theme: data.theme,
+        position: data.position,
+        published: data.published,
+      };
+    }
+  }
+  return fallback[0] || null;
 }

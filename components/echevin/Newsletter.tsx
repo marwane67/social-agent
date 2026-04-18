@@ -1,27 +1,19 @@
-export default function Newsletter() {
+import type { NewsletterSettings } from '../../lib/content';
+
+export default function Newsletter({ settings }: { settings?: NewsletterSettings }) {
+  const s = settings || { enabled: true, label: 'MA NEWSLETTER', placeholder: 'votre adresse mail', button: "je m'abonne" };
+  if (!s.enabled) return null;
   return (
     <section className="ec-newsletter">
       <div className="ec-newsletter__inner">
-        {/* GAUCHE 20% : image label */}
         <div className="ec-newsletter__label-col">
-          {/* PLACEHOLDER : image "MA NEWSLETTER" */}
-          <div className="ec-newsletter__label-placeholder">MA NEWSLETTER</div>
+          <div className="ec-newsletter__label-placeholder">{s.label}</div>
         </div>
-
-        {/* DROITE 80% : formulaire */}
         <div className="ec-newsletter__form-col">
-          <form
-            className="ec-newsletter__form"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <input
-              className="ec-newsletter__input"
-              type="email"
-              placeholder="votre adresse mail"
-              required
-            />
+          <form className="ec-newsletter__form" onSubmit={(e) => e.preventDefault()}>
+            <input className="ec-newsletter__input" type="email" placeholder={s.placeholder} required />
             <button className="ec-newsletter__btn" type="submit">
-              je m&apos;abonne
+              {s.button}
             </button>
           </form>
         </div>

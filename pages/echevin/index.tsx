@@ -6,37 +6,46 @@ import FeaturedNote from '../../components/echevin/FeaturedNote';
 import NotesList from '../../components/echevin/NotesList';
 import VideosSection from '../../components/echevin/VideosSection';
 import ContactSection from '../../components/echevin/ContactSection';
-import { getArticles, getHero, getVideos, type Article, type Video, type HeroSettings } from '../../lib/content';
+import {
+  getArticles,
+  getHomeSettings,
+  getFeaturedArticle,
+  getVideos,
+  type Article,
+  type Video,
+  type HomeSettings,
+} from '../../lib/content';
 
 type Props = {
   articles: Article[];
+  featured: Article | null;
   videos: Video[];
-  hero: HeroSettings;
+  settings: HomeSettings;
 };
 
-export default function EchevinHome({ articles, videos, hero }: Props) {
-  const featured = articles[0] || null;
-  const rest = articles.slice(1);
+export default function EchevinHome({ articles, featured, videos, settings }: Props) {
+  const rest = featured ? articles.filter((a) => a.id !== featured.id) : articles;
   return (
     <EchevinLayout
       title="Anas Ben Abdelmoumen — Échevin à la Ville de Bruxelles"
       description="Site officiel d'Anas Ben Abdelmoumen, échevin des Finances et de la Propreté publique à la Ville de Bruxelles (PS). Actualités, vidéos, contact."
     >
-      <Hero hero={hero} />
-      <Newsletter />
+      <Hero hero={settings.hero} />
+      <Newsletter settings={settings.newsletter} />
       <FeaturedNote featured={featured} />
       <NotesList articles={rest} limit={4} showMore moreHref="/echevin/notes" />
       <VideosSection videos={videos.slice(0, 4)} />
-      <ContactSection />
+      <ContactSection settings={settings.contact} />
     </EchevinLayout>
   );
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
-  const [articles, videos, hero] = await Promise.all([
+  const [articles, videos, settings] = await Promise.all([
     getArticles({ limit: 20 }),
     getVideos(),
-    getHero(),
+    getHomeSettings(),
   ]);
-  return { props: { articles, videos, hero } };
+  const featured = await getFeaturedArticle(settings.featured, articles);
+  return { props: { articles, featured, videos, settings } };
 };
