@@ -269,13 +269,14 @@ body:has(.ec-site), html:has(.ec-site) { background: var(--ec-white) !important;
 }
 
 /* --- SOCIAL ICONS --- */
-.ec-social-row { display: flex; gap: 7px; flex-wrap: wrap; }
+.ec-social-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .ec-social-row a {
   display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 14px; color: var(--ec-white);
-  font-size: 14px; padding: 0.3em; transition: transform 0.3s;
-  font-weight: 800;
+  width: 40px; height: 40px; border-radius: 12px; color: var(--ec-white);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+.ec-social-row a:active { transform: scale(0.95); }
 .ec-social-row a:hover { transform: scale(1.1); color: var(--ec-white); }
 .ec-social-row a.facebook  { background: #1877F2; }
 .ec-social-row a.instagram { background: radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
