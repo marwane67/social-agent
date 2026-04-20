@@ -3,24 +3,22 @@ import { useRouter } from 'next/router'
 import { useState, useEffect, ReactNode } from 'react'
 import { useNetwork, Network } from '../lib/network-context'
 
+// 4 items principaux. Tout le reste accessible via /studio ou /brain.
 const NAV = [
-  { href: '/agent', label: 'Pulse · Agent IA', icon: 'sparkle' },
-  { href: '/', label: 'Compose', icon: 'compose' },
+  { href: '/agent', label: 'Pulse', icon: 'sparkle' },
   { href: '/calendar', label: 'Calendrier', icon: 'calendar' },
-  { href: '/brief', label: 'Brief du jour', icon: 'sun' },
-  { href: '/library', label: 'Library', icon: 'book' },
-  { href: '/analytics', label: 'Analytics', icon: 'chart' },
-  { href: '/grow', label: 'Grow', icon: 'sprout' },
+  { href: '/brain', label: 'Brain', icon: 'compass' },
+  { href: '/studio', label: 'Studio', icon: 'tools' },
 ]
 
 const MORE = [
-  { href: '/strategy', label: 'Stratégie (brain)' },
+  { href: '/', label: 'Compose rapide' },
+  { href: '/brief', label: 'Brief du jour' },
+  { href: '/library', label: 'Library (hooks + frameworks)' },
+  { href: '/strategy', label: 'Stratégie' },
   { href: '/voice', label: 'Ma voix' },
+  { href: '/analytics', label: 'Performance' },
   { href: '/bio', label: 'Bio' },
-  { href: '/plan', label: 'Plan (séries + A/B)' },
-  { href: '/reply', label: 'Reply' },
-  { href: '/tools', label: 'Tools' },
-  { href: '/newsletter', label: 'Newsletter' },
   { href: '/more', label: 'Tout voir' },
 ]
 
@@ -568,6 +566,19 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
           <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+        </svg>
+      )
+    case 'compass':
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+        </svg>
+      )
+    case 'tools':
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z" />
         </svg>
       )
     case 'compose':

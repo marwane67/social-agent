@@ -25,20 +25,58 @@ const SUGGESTIONS = [
   { label: 'Suggère des hooks', prompt: 'Donne-moi 5 hooks viraux sur le thème de l\'IA pour entrepreneurs' },
 ]
 
+type Resources = {
+  hooks: number
+  frameworks: number
+  voiceProfile: boolean
+  perfPosts: number
+  calendarEntries: number
+  brainProjects: number
+  brainAxes: number
+  bufferChannels: number
+}
+
 export default function AgentPage() {
   const router = useRouter()
   const { network, isLi } = useNetwork()
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resources, setResources] = useState<Resources | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Load history
+  // Load history + resources summary
   useEffect(() => {
     try {
       const saved = localStorage.getItem('agent-history')
       if (saved) setMessages(JSON.parse(saved))
     } catch {}
+    // Compute what resources Pulse has access to
+    ;(async () => {
+      try {
+        const { HOOKS } = await import('../lib/hooks')
+        const { FRAMEWORKS } = await import('../lib/frameworks')
+        const { getEntries } = await import('../lib/calendar')
+        const { getBrain } = await import('../lib/brain')
+        const brain = getBrain()
+        const vp = localStorage.getItem('voice-profile')
+        let perfPosts = 0
+        try {
+          const perf = JSON.parse(localStorage.getItem('post-performance') || '[]')
+          perfPosts = perf.length
+        } catch {}
+        setResources({
+          hooks: HOOKS.length,
+          frameworks: FRAMEWORKS.length,
+          voiceProfile: !!vp,
+          perfPosts,
+          calendarEntries: getEntries().length,
+          brainProjects: brain.projects.length,
+          brainAxes: brain.axes.length,
+          bufferChannels: brain.channels.length,
+        })
+      } catch {}
+    })()
   }, [])
 
   // Save history
@@ -58,12 +96,16 @@ export default function AgentPage() {
     try {
       switch (name) {
         case 'plan_calendar': {
-          // Cap at 14 days. We generate posts in PARALLEL (one /api/generate per day)
-          // instead of one heavy /api/series call. Much faster + no timeout.
           const days = Math.min(Math.max(args.days || 7, 1), 14)
           const startDate = args.start_date ? new Date(args.start_date) : new Date()
           const net = args.network || network
           const theme = args.theme
+
+          // === Load all ressources to inject in generation ===
+          const { sampleHooks } = await import('../lib/hooks')
+          const { frameworksFor } = await import('../lib/frameworks')
+          const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
+          const { getEntries } = await import('../lib/calendar')
 
           let voiceProfile: any = null
           try {
@@ -71,45 +113,62 @@ export default function AgentPage() {
             if (vp) voiceProfile = JSON.parse(vp)
           } catch {}
 
-          // Format rotation to vary content types across the week
+          const insights = computeInsights(getPerformances())
+          const perfBlock = insights.totalPosts >= 5 ? insightsAsPromptBlock(insights) : undefined
+
+          // Avoid topic duplication : collect recent planned topics
+          const recentEntries = getEntries().slice(-20)
+          const recentTopicsHint = recentEntries.length > 0
+            ? `\n\nÉVITE les sujets déjà planifiés récemment : ${recentEntries.map(e => (e.topic || '').slice(0, 40)).join(' | ')}`
+            : ''
+
+          // Format rotation
           const formatPool = net === 'twitter'
             ? ['raw_build', 'hot_take', 'storytelling', 'one_liner', 'behind_scenes', 'ai_authority', 'axora_hype']
             : ['storytelling_li', 'transparency', 'thought_leadership', 'value_bomb', 'personal_brand', 'debate_li', 'axora_linkedin']
 
-          // Generate N posts in parallel
+          // Pre-pick hooks (one unique per day)
+          const pickedHooks = sampleHooks(days)
+          // For LinkedIn : rotate frameworks too
+          const liFrameworks = net === 'linkedin' ? frameworksFor('linkedin') : []
+
           const requests = Array.from({ length: days }, (_, i) => {
             const format = formatPool[i % formatPool.length]
+            const hook = pickedHooks[i % pickedHooks.length]
+            const framework = net === 'linkedin' ? liFrameworks[i % liFrameworks.length]?.id : undefined
             const dayContext =
-              i === 0 ? 'Premier post de la série : pose le contexte et le problème.' :
-              i === days - 1 ? 'Dernier post de la série : conclusion ou call to action.' :
-              `Post ${i + 1}/${days} : fais avancer la narration.`
+              i === 0 ? 'Premier post : pose le contexte, le problème, ou l\'annonce.' :
+              i === days - 1 ? 'Dernier post : conclusion forte ou call to action.' :
+              `Post ${i + 1}/${days} : avance la narrative, varie l'angle.`
             return fetch('/api/generate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                input: `Série sur "${theme}". ${dayContext}`,
+                input: `Série sur "${theme}". ${dayContext}${recentTopicsHint}`,
                 format,
                 network: net,
                 voiceProfile,
+                performanceInsights: perfBlock,
+                hookId: hook?.id,
+                framework,
               }),
             })
               .then(r => r.json())
               .then(data => {
                 const post = data.posts?.[0]
                 if (!post) return null
-                return { day: i, format, type: post.type, text: post.text }
+                return { day: i, format, type: post.type, text: post.text, hookId: hook?.id, framework }
               })
               .catch(() => null)
           })
 
           const results = await Promise.all(requests)
-          const validResults = results.filter((r): r is { day: number; format: string; type: string; text: string } => !!r)
+          const validResults = results.filter((r): r is NonNullable<typeof r> => r !== null)
 
           if (validResults.length === 0) {
             return { success: false, summary: 'Échec génération — réessaye avec moins de jours ou un thème plus simple' }
           }
 
-          // Build calendar entries
           const entries = validResults.map(r => {
             const d = new Date(startDate)
             d.setDate(d.getDate() + r.day)
@@ -121,33 +180,66 @@ export default function AgentPage() {
               text: r.text,
               scheduledAt: d.toISOString(),
               status: 'scheduled' as const,
+              hookId: r.hookId,
+              framework: r.framework,
             }
           })
           saveBatch(entries)
 
+          const resourcesUsed = [
+            `${days} hooks rotation`,
+            net === 'linkedin' ? `${liFrameworks.length} frameworks rotation` : '',
+            voiceProfile ? 'voice profile' : '',
+            perfBlock ? 'top perfs' : '',
+            recentEntries.length > 0 ? 'dedup calendrier' : '',
+          ].filter(Boolean).join(' · ')
+
           return {
             success: true,
-            summary: `${validResults.length}/${days} posts planifiés sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'} (${theme}). Ajoutés au calendrier à 10h chaque jour.`,
+            summary: `${validResults.length}/${days} posts planifiés sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'}. Ressources : ${resourcesUsed}`,
             data: { entries_count: entries.length },
           }
         }
 
         case 'generate_post': {
+          // Pulse pioche AUTO une combo hook+framework cohérente
+          const { HOOKS, sampleHooks } = await import('../lib/hooks')
+          const { FRAMEWORKS, frameworksFor } = await import('../lib/frameworks')
+
           const body: any = { input: args.topic, format: args.format, network: args.network }
           try {
             const vp = localStorage.getItem('voice-profile')
             if (vp) body.voiceProfile = JSON.parse(vp)
           } catch {}
+          try {
+            const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
+            const insights = computeInsights(getPerformances())
+            if (insights.totalPosts >= 5) body.performanceInsights = insightsAsPromptBlock(insights)
+          } catch {}
+
+          // Auto-pick hook (random from library)
+          const pickedHook = sampleHooks(1)[0]
+          if (pickedHook) body.hookId = pickedHook.id
+
+          // Auto-pick framework for LinkedIn (long form benefits from structure)
+          if (args.network === 'linkedin') {
+            const liFrameworks = frameworksFor('linkedin')
+            const pickedFw = liFrameworks[Math.floor(Math.random() * liFrameworks.length)]
+            if (pickedFw) body.framework = pickedFw.id
+          }
+
           const res = await fetch('/api/generate', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
           })
           const data = await res.json()
           if (!data.posts?.length) return { success: false, summary: data.error || 'Échec génération' }
+          const usedHook = pickedHook ? `Hook #${pickedHook.id} "${pickedHook.text.slice(0, 35)}..."` : ''
+          const usedFw = body.framework ? ` + framework ${body.framework}` : ''
           return {
             success: true,
-            summary: `Post généré (${data.posts.length} variantes) — ${args.format} sur ${args.network}`,
-            data: { posts: data.posts },
+            summary: `${data.posts.length} variantes générées · ${usedHook}${usedFw}`,
+            data: { posts: data.posts, hook: pickedHook, framework: body.framework },
           }
         }
 
@@ -295,19 +387,34 @@ export default function AgentPage() {
           const primaryProject = brain.projects.find(p => axis.projects.includes(p.id))
           const theme = axis.name + (primaryProject ? ` (${primaryProject.pitch})` : '')
 
+          // === Use ALL resources ===
+          const { sampleHooks } = await import('../lib/hooks')
+          const { frameworksFor } = await import('../lib/frameworks')
+          const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
+          const { getEntries } = await import('../lib/calendar')
+
           let voiceProfile: any = null
           try {
             const vp = localStorage.getItem('voice-profile')
             if (vp) voiceProfile = JSON.parse(vp)
           } catch {}
+          const insights = computeInsights(getPerformances())
+          const perfBlock = insights.totalPosts >= 5 ? insightsAsPromptBlock(insights) : undefined
+          const recentTopics = getEntries().slice(-15).map(e => (e.topic || '').slice(0, 40)).join(' | ')
+          const dedupHint = recentTopics ? `\n\nÉVITE ces sujets déjà planifiés : ${recentTopics}` : ''
 
           const formatPool = net === 'twitter'
             ? ['raw_build', 'hot_take', 'storytelling', 'one_liner', 'behind_scenes']
             : ['storytelling_li', 'transparency', 'thought_leadership', 'value_bomb', 'personal_brand']
 
+          const pickedHooks = sampleHooks(days)
+          const liFrameworks = net === 'linkedin' ? frameworksFor('linkedin') : []
+
           const requests = Array.from({ length: days }, (_, i) => {
             const format = formatPool[i % formatPool.length]
-            const dayContext = `Post ${i + 1}/${days} sur l'axe "${axis.name}". Description axe : ${axis.description}. Avance la narrative.`
+            const hook = pickedHooks[i % pickedHooks.length]
+            const framework = net === 'linkedin' ? liFrameworks[i % liFrameworks.length]?.id : undefined
+            const dayContext = `Post ${i + 1}/${days} sur l'axe "${axis.name}". ${axis.description}. Avance la narrative.${dedupHint}`
             return fetch('/api/generate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -316,14 +423,17 @@ export default function AgentPage() {
                 format,
                 network: net,
                 voiceProfile,
+                performanceInsights: perfBlock,
+                hookId: hook?.id,
+                framework,
               }),
             }).then(r => r.json()).then(data => {
               const p = data.posts?.[0]
-              return p ? { day: i, format, type: p.type, text: p.text } : null
+              return p ? { day: i, format, type: p.type, text: p.text, hookId: hook?.id, framework } : null
             }).catch(() => null)
           })
 
-          const results = (await Promise.all(requests)).filter((r): r is { day: number; format: string; type: string; text: string } => !!r)
+          const results = (await Promise.all(requests)).filter((r): r is NonNullable<typeof r> => r !== null)
           if (results.length === 0) return { success: false, summary: 'Échec génération — réessaye plus tard' }
 
           const entries = results.map(r => {
@@ -337,12 +447,22 @@ export default function AgentPage() {
               text: r.text,
               scheduledAt: d.toISOString(),
               status: 'scheduled' as const,
+              hookId: r.hookId,
+              framework: r.framework,
             }
           })
           saveBatch(entries)
+
+          const resources = [
+            `${days} hooks`,
+            net === 'linkedin' ? `${liFrameworks.length} frameworks` : '',
+            voiceProfile ? 'voice' : '',
+            perfBlock ? 'top perfs' : '',
+          ].filter(Boolean).join(' + ')
+
           return {
             success: true,
-            summary: `${results.length}/${days} posts planifiés pour l'axe "${axis.name}" (${net}). Router Buffer via axisId="${axis.id}".`,
+            summary: `${results.length}/${days} posts pour l'axe "${axis.name}" (${net}) · Ressources : ${resources}. Router Buffer avec axisId="${axis.id}".`,
           }
         }
 
@@ -503,6 +623,28 @@ export default function AgentPage() {
               </div>
             )}
           </div>
+
+          {/* Resources bar */}
+          {resources && (
+            <div className="resources" title="Ressources que Pulse utilise automatiquement">
+              <span className="res-label">Ressources actives :</span>
+              <span className="res-chip" onClick={() => router.push('/library')}>{resources.hooks} hooks</span>
+              <span className="res-chip" onClick={() => router.push('/library')}>{resources.frameworks} frameworks</span>
+              <span className={`res-chip ${resources.voiceProfile ? 'res-on' : 'res-off'}`} onClick={() => router.push('/voice')}>
+                voice {resources.voiceProfile ? '✓' : '—'}
+              </span>
+              <span className={`res-chip ${resources.perfPosts >= 5 ? 'res-on' : 'res-off'}`} onClick={() => router.push('/analytics')}>
+                {resources.perfPosts} perf{resources.perfPosts > 1 ? 's' : ''}
+              </span>
+              <span className="res-chip" onClick={() => router.push('/strategy')}>
+                brain · {resources.brainAxes} axes
+              </span>
+              <span className="res-chip" onClick={() => router.push('/calendar')}>
+                {resources.calendarEntries} au calendrier
+              </span>
+              <span className="res-chip">{resources.bufferChannels} channels Buffer</span>
+            </div>
+          )}
 
           {/* Input */}
           <div className="input-bar">
@@ -696,6 +838,36 @@ export default function AgentPage() {
             0%, 100% { opacity: 0.3; transform: translateY(0); }
             50% { opacity: 1; transform: translateY(-3px); }
           }
+
+          /* Resources bar */
+          .resources {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            padding: 8px 4px;
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: var(--mono);
+          }
+          .res-label {
+            color: var(--text-faint);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-right: 4px;
+          }
+          .res-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 100px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all var(--t-fast) var(--ease);
+          }
+          .res-chip:hover { border-color: var(--net); color: var(--net); }
+          .res-chip.res-on { border-color: rgba(74,222,128,0.3); color: var(--success); }
+          .res-chip.res-off { opacity: 0.5; }
 
           /* Input */
           .input-bar {
