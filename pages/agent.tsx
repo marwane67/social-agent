@@ -74,6 +74,10 @@ export default function AgentPage() {
       clientState.performanceInsights = computeInsights(getPerformances())
     } catch {}
 
+    // Abort controller pour gérer un timeout côté client (90s max)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 90_000)
+
     try {
       // Format messages for OpenAI-compatible API (just role + content)
       const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }))
@@ -82,8 +86,22 @@ export default function AgentPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages, clientState }),
+        signal: controller.signal,
       })
-      const data = await res.json()
+      clearTimeout(timeoutId)
+
+      // Tenter de parser le JSON, fallback sur le texte brut
+      let data: any
+      const rawText = await res.text()
+      try {
+        data = JSON.parse(rawText)
+      } catch {
+        throw new Error(`Réponse non-JSON (HTTP ${res.status}) : ${rawText.slice(0, 200)}`)
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || `Erreur HTTP ${res.status}`)
+      }
 
       // Process actions client-side : save calendar entries to localStorage
       if (data.actions && Array.isArray(data.actions)) {
@@ -106,10 +124,14 @@ export default function AgentPage() {
       }
       setMessages([...newMsgs, assistantMsg])
     } catch (e: any) {
+      clearTimeout(timeoutId)
+      const isAbort = e.name === 'AbortError'
       const errMsg: Msg = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Connexion impossible : ' + (e.message || 'erreur'),
+        content: isAbort
+          ? '⚠️ Trop long (>90s). Demande plus simple ou réessaye.'
+          : '⚠️ Erreur : ' + (e.message || 'inconnue'),
         ts: Date.now(),
       }
       setMessages([...newMsgs, errMsg])
@@ -174,6 +196,7 @@ export default function AgentPage() {
                 <div className="bubble">
                   <div className="thinking">
                     <span /><span /><span />
+                    <span className="thinking-label">Pulse réfléchit · jusqu'à 60s pour les tâches complexes</span>
                   </div>
                 </div>
               </div>
@@ -346,11 +369,18 @@ export default function AgentPage() {
 
           .thinking {
             display: inline-flex;
-            gap: 4px;
-            padding: 16px;
+            gap: 6px;
+            align-items: center;
+            padding: 12px 16px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 4px 16px 16px 16px;
+          }
+          .thinking-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 8px;
+            font-family: var(--mono);
           }
           .thinking span {
             width: 6px;

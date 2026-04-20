@@ -15,7 +15,6 @@ const KEY = 'sa-network'
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const [network, setNetworkState] = useState<Network>('twitter')
-  const [hydrated, setHydrated] = useState(false)
 
   // Hydrate from localStorage on mount (client only)
   useEffect(() => {
@@ -23,7 +22,6 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(KEY) as Network | null
       if (saved === 'twitter' || saved === 'linkedin') setNetworkState(saved)
     } catch {}
-    setHydrated(true)
   }, [])
 
   const setNetwork = (n: Network) => {
@@ -46,8 +44,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 
   return (
     <NetworkContext.Provider value={{ network, setNetwork, toggle, isLi: network === 'linkedin' }}>
-      {/* Avoid hydration mismatch flash : render children only after hydration sets the right network */}
-      <div style={{ visibility: hydrated ? 'visible' : 'hidden' }}>{children}</div>
+      {children}
     </NetworkContext.Provider>
   )
 }

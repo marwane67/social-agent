@@ -1,5 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+// Vercel function config — augmente le timeout pour les chaînes de tool calls
+export const config = {
+  maxDuration: 60, // seconds
+}
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 const SYSTEM = `Tu es Pulse, l'agent IA personnel de Marwane (entrepreneur tech à Bruxelles, fondateur de Axora marketplace + Pulsa Creatives).
