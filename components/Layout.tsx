@@ -4,17 +4,19 @@ import { useState, useEffect, ReactNode } from 'react'
 import { useNetwork, Network } from '../lib/network-context'
 
 const NAV = [
+  { href: '/agent', label: 'Pulse · Agent IA', icon: 'sparkle' },
   { href: '/', label: 'Compose', icon: 'compose' },
+  { href: '/calendar', label: 'Calendrier', icon: 'calendar' },
   { href: '/brief', label: 'Brief du jour', icon: 'sun' },
   { href: '/library', label: 'Library', icon: 'book' },
   { href: '/analytics', label: 'Analytics', icon: 'chart' },
-  { href: '/plan', label: 'Plan', icon: 'calendar' },
   { href: '/grow', label: 'Grow', icon: 'sprout' },
 ]
 
 const MORE = [
   { href: '/voice', label: 'Ma voix' },
   { href: '/bio', label: 'Bio' },
+  { href: '/plan', label: 'Plan (séries + A/B)' },
   { href: '/reply', label: 'Reply' },
   { href: '/tools', label: 'Tools' },
   { href: '/newsletter', label: 'Newsletter' },
@@ -153,6 +155,14 @@ export default function Layout({ children, title, subtitle }: Props) {
         )}
         <div className="page-body">{children}</div>
       </main>
+
+      {/* === FLOATING PULSE BUTTON === */}
+      {router.pathname !== '/agent' && (
+        <Link href="/agent" className="pulse-fab" aria-label="Ouvrir Pulse, agent IA">
+          <span className="pulse-fab-orb" />
+          <span className="pulse-fab-label">Pulse</span>
+        </Link>
+      )}
 
       <style jsx>{`
         .shell {
@@ -492,6 +502,39 @@ export default function Layout({ children, title, subtitle }: Props) {
           width: 100%;
         }
 
+        /* === FLOATING PULSE BUTTON === */
+        .pulse-fab {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          z-index: 50;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 16px 10px 12px;
+          background: var(--accent);
+          color: var(--accent-text-on);
+          border-radius: 100px;
+          font-weight: 600;
+          font-size: 13px;
+          letter-spacing: -0.01em;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-border);
+          transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+        }
+        .pulse-fab:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent);
+        }
+        .pulse-fab-orb {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--accent-text-on);
+          opacity: 0.85;
+          animation: pulse-soft 2s ease-in-out infinite;
+        }
+        .pulse-fab-label { font-family: var(--font); }
+
         @media (max-width: 768px) {
           .sb {
             transform: translateX(-100%);
@@ -505,6 +548,7 @@ export default function Layout({ children, title, subtitle }: Props) {
           .page-head { padding: 24px 18px 4px; }
           .page-title { font-size: 22px; }
           .page-body { padding: 14px 18px 80px; }
+          .pulse-fab { bottom: 16px; right: 16px; padding: 9px 14px 9px 10px; font-size: 12px; }
         }
       `}</style>
     </div>
@@ -519,6 +563,12 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
   const stroke = active ? 'currentColor' : 'currentColor'
   const sw = active ? 1.8 : 1.6
   switch (name) {
+    case 'sparkle':
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+          <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+        </svg>
+      )
     case 'compose':
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
