@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
+import { useNetwork } from '../lib/network-context'
 
 type Post = { type: string; text: string }
-type Network = 'twitter' | 'linkedin'
 type Format = { id: string; label: string }
 type GenImage = { url: string | null; prompt: string; provider: string; canvaUrl?: string; note?: string }
 
@@ -29,9 +29,14 @@ const LI_FORMATS: Format[] = [
   { id: 'axora_linkedin', label: 'Axora' },
 ]
 
-export default function Home() {
+const PLACEHOLDERS = {
+  twitter: "Une décision. Un chiffre. Une galère. Une victoire. Vas-y direct.",
+  linkedin: "Une histoire à raconter. Un insight. Une coulisse. Prends le temps de poser le contexte.",
+}
+
+export default function Compose() {
   const router = useRouter()
-  const [network, setNetwork] = useState<Network>('twitter')
+  const { network, isLi } = useNetwork()
   const [format, setFormat] = useState('raw_build')
   const [input, setInput] = useState('')
   const [posts, setPosts] = useState<Post[]>([])
@@ -42,14 +47,22 @@ export default function Home() {
   const [copied, setCopied] = useState<number | null>(null)
   const [images, setImages] = useState<Record<number, GenImage>>({})
   const [imgLoading, setImgLoading] = useState<number | null>(null)
-  const [showOptions, setShowOptions] = useState(false)
+  const [showAllFormats, setShowAllFormats] = useState(false)
   const [selectedHook, setSelectedHook] = useState<{ id: number; text: string } | null>(null)
   const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
 
-  const formats = network === 'twitter' ? TW_FORMATS : LI_FORMATS
-  const maxChars = network === 'twitter' ? 280 : 3000
+  const formats = useMemo(() => (isLi ? LI_FORMATS : TW_FORMATS), [isLi])
+  const maxChars = isLi ? 3000 : 280
+  const placeholder = isLi ? PLACEHOLDERS.linkedin : PLACEHOLDERS.twitter
 
-  // Initial load — pick up selections from other pages
+  // Reset format on network switch
+  useEffect(() => {
+    setFormat(isLi ? 'transparency' : 'raw_build')
+    setPosts([])
+    setImages({})
+  }, [isLi])
+
+  // Pick up selections from Library / Brief
   useEffect(() => {
     try {
       const h = localStorage.getItem('selected-hook')
@@ -59,7 +72,6 @@ export default function Home() {
       const idea = localStorage.getItem('brief-idea')
       if (idea) {
         const parsed = JSON.parse(idea)
-        if (parsed.network) setNetwork(parsed.network)
         if (parsed.format) setFormat(parsed.format)
         setInput((parsed.angle || '') + (parsed.hook ? `\n\nHook : ${parsed.hook}` : ''))
         localStorage.removeItem('brief-idea')
@@ -67,14 +79,9 @@ export default function Home() {
     } catch {}
   }, [])
 
-  // Reset format when network changes
-  useEffect(() => {
-    setFormat(network === 'twitter' ? 'raw_build' : 'transparency')
-  }, [network])
-
   const generate = async () => {
     if (!input.trim()) {
-      setError('Décris ce qui se passe : une décision, un chiffre, une victoire...')
+      setError('Décris ce qui se passe')
       return
     }
     setError('')
@@ -106,7 +113,6 @@ export default function Home() {
       const data = await res.json()
       if (data.posts) {
         setPosts(data.posts)
-        // Save to history
         try {
           const hist = JSON.parse(localStorage.getItem('social-agent-history') || '[]')
           hist.unshift({
@@ -156,9 +162,9 @@ export default function Home() {
   const openInNetwork = (i: number) => {
     const text = encodeURIComponent(editTexts[i] ?? posts[i].text)
     window.open(
-      network === 'twitter'
-        ? `https://twitter.com/intent/tweet?text=${text}`
-        : `https://www.linkedin.com/feed/?shareActive=true&text=${text}`,
+      isLi
+        ? `https://www.linkedin.com/feed/?shareActive=true&text=${text}`
+        : `https://twitter.com/intent/tweet?text=${text}`,
       '_blank'
     )
   }
@@ -179,495 +185,524 @@ export default function Home() {
         <title>Compose — Social Agent</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <Layout
-        network={network}
-        onNetworkChange={setNetwork}
-        title="Compose"
-        subtitle={`${network === 'twitter' ? 'Twitter / X' : 'LinkedIn'}`}
-      >
+      <Layout title="Compose" subtitle={isLi ? 'LinkedIn · ton professionnel, format aéré' : 'Twitter / X · punchy, max 280 chars'}>
         {/* === COMPOSER === */}
-        <div className="composer">
-          <textarea
-            className="prompt-input"
-            placeholder="Décris ce qui se passe. Une décision. Un chiffre. Une galère. Une victoire."
-            value={input}
-            onChange={e => { setInput(e.target.value); if (error) setError('') }}
-            rows={4}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate() }}
-          />
+        <section className="composer">
+          <div className="composer-inner">
+            <textarea
+              className="prompt"
+              placeholder={placeholder}
+              value={input}
+              onChange={e => { setInput(e.target.value); if (error) setError('') }}
+              rows={isLi ? 5 : 4}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate() }}
+            />
 
-          {/* Format pills (compact) */}
-          <div className="format-row">
-            {formats.slice(0, 4).map(f => (
-              <button
-                key={f.id}
-                className={`fmt-chip ${format === f.id ? 'fmt-on' : ''}`}
-                onClick={() => setFormat(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-            <button className="fmt-more" onClick={() => setShowOptions(!showOptions)}>
-              {showOptions ? '−' : '+'}
-            </button>
-          </div>
-
-          {/* Extra formats expanded */}
-          {showOptions && (
-            <div className="format-row format-extra">
-              {formats.slice(4).map(f => (
+            {/* Format pills */}
+            <div className="formats">
+              {(showAllFormats ? formats : formats.slice(0, 4)).map(f => (
                 <button
                   key={f.id}
-                  className={`fmt-chip ${format === f.id ? 'fmt-on' : ''}`}
+                  className={`pill ${format === f.id ? 'pill-on' : ''}`}
                   onClick={() => setFormat(f.id)}
                 >
                   {f.label}
                 </button>
               ))}
-            </div>
-          )}
-
-          {/* Active hook / framework chips */}
-          {(selectedHook || selectedFramework) && (
-            <div className="active-chips">
-              {selectedHook && (
-                <span className="active-chip">
-                  Hook · {selectedHook.text.slice(0, 40)}{selectedHook.text.length > 40 ? '...' : ''}
-                  <button onClick={() => setSelectedHook(null)} aria-label="Remove">×</button>
-                </span>
-              )}
-              {selectedFramework && (
-                <span className="active-chip">
-                  Framework · {selectedFramework}
-                  <button onClick={() => setSelectedFramework(null)} aria-label="Remove">×</button>
-                </span>
+              {formats.length > 4 && (
+                <button className="pill pill-more" onClick={() => setShowAllFormats(!showAllFormats)}>
+                  {showAllFormats ? '−' : `+${formats.length - 4}`}
+                </button>
               )}
             </div>
-          )}
 
-          {error && <div className="err">{error}</div>}
+            {/* Active chips */}
+            {(selectedHook || selectedFramework) && (
+              <div className="active-row">
+                {selectedHook && (
+                  <span className="active">
+                    <span className="active-label">Hook</span>
+                    <span className="active-val">{selectedHook.text.slice(0, 40)}{selectedHook.text.length > 40 ? '…' : ''}</span>
+                    <button onClick={() => setSelectedHook(null)} aria-label="Remove">×</button>
+                  </span>
+                )}
+                {selectedFramework && (
+                  <span className="active">
+                    <span className="active-label">Framework</span>
+                    <span className="active-val">{selectedFramework}</span>
+                    <button onClick={() => setSelectedFramework(null)} aria-label="Remove">×</button>
+                  </span>
+                )}
+              </div>
+            )}
 
+            {error && <div className="err">{error}</div>}
+          </div>
+
+          {/* Generate button — sticky at bottom of composer */}
           <button
-            className={`btn-gen ${loading ? 'is-loading' : ''}`}
+            className={`btn-primary ${loading ? 'loading' : ''}`}
             onClick={generate}
             disabled={loading}
           >
-            {loading ? (
-              <><span className="spin" /> Génération...</>
-            ) : (
-              <>Générer 3 posts <span className="kbd">⌘ ↵</span></>
-            )}
+            <span className="btn-content">
+              {loading ? (
+                <><span className="spin" /> Génération…</>
+              ) : (
+                <>
+                  <span>Générer 3 posts</span>
+                  <span className="kbd">⌘ ↵</span>
+                </>
+              )}
+            </span>
           </button>
-        </div>
+        </section>
 
         {/* === RESULTS === */}
         {posts.length > 0 && (
-          <div className="results">
+          <section className="results">
             {posts.map((post, i) => {
               const text = editTexts[i] ?? post.text
               const count = charCount(i)
               const isOver = count > maxChars
               const img = images[i]
               return (
-                <article key={i} className="post-card">
-                  {/* Type badge */}
-                  <div className="pc-meta">
-                    <span className="pc-type">{post.type}</span>
-                    <span className={`pc-chars ${isOver ? 'over' : ''}`}>
-                      {count}/{maxChars}
+                <article key={i} className="post-card post-card-anim">
+                  <header className="card-head">
+                    <span className="card-type">{post.type}</span>
+                    <span className={`card-chars ${isOver ? 'over' : ''}`}>
+                      {count}<span className="card-chars-sep">/</span>{maxChars}
                     </span>
-                  </div>
+                  </header>
 
-                  {/* Text or editor */}
                   {editing === i ? (
                     <textarea
-                      className="pc-edit"
+                      className="card-edit"
                       value={text}
                       onChange={e => setEditTexts(prev => ({ ...prev, [i]: e.target.value }))}
-                      rows={network === 'linkedin' ? 12 : 6}
+                      rows={isLi ? 14 : 6}
                       autoFocus
                     />
                   ) : (
-                    <div className="pc-text">
+                    <div className="card-text">
                       {text.split('\n').map((line, j, arr) => (
-                        <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
+                        <span key={j}>{line || '\u00A0'}{j < arr.length - 1 && <br />}</span>
                       ))}
                     </div>
                   )}
 
-                  {/* Inline image */}
                   {img && img.url && (
-                    <div className="pc-image">
+                    <div className="card-img">
                       <img src={img.url} alt="post visual" />
-                      <div className="pc-img-actions">
-                        <a href={img.url} download={`post-${i + 1}.png`} className="pc-img-btn">
-                          Télécharger
-                        </a>
-                        <button onClick={() => generateImage(i)} className="pc-img-btn">
-                          Régénérer
-                        </button>
-                        <span className="pc-img-prov">via {img.provider}</span>
+                      <div className="card-img-bar">
+                        <a href={img.url} download={`post-${i + 1}.png`} className="card-img-act">↓ Télécharger</a>
+                        <button onClick={() => generateImage(i)} className="card-img-act">↻ Régénérer</button>
+                        <span className="card-img-prov">{img.provider}</span>
                       </div>
                     </div>
                   )}
                   {img && !img.url && img.canvaUrl && (
-                    <div className="pc-canva">
-                      <div className="pc-canva-note">{img.note}</div>
-                      <a href={img.canvaUrl} target="_blank" rel="noreferrer" className="pc-canva-btn">
-                        Ouvrir Canva
+                    <div className="card-canva">
+                      <p>{img.note}</p>
+                      <a href={img.canvaUrl} target="_blank" rel="noreferrer" className="card-canva-btn">
+                        Ouvrir Canva →
                       </a>
                     </div>
                   )}
 
-                  {/* Actions */}
-                  <div className="pc-actions">
-                    <button className="act" onClick={() => copyPost(i)}>
+                  <footer className="card-foot">
+                    <button className="card-act" onClick={() => copyPost(i)}>
                       {copied === i ? '✓ Copié' : 'Copier'}
                     </button>
-                    <button className={`act ${editing === i ? 'act-on' : ''}`} onClick={() => toggleEdit(i)}>
+                    <button className={`card-act ${editing === i ? 'card-act-on' : ''}`} onClick={() => toggleEdit(i)}>
                       {editing === i ? 'OK' : 'Éditer'}
                     </button>
                     <button
-                      className="act"
+                      className="card-act"
                       onClick={() => generateImage(i)}
                       disabled={imgLoading === i}
                     >
-                      {imgLoading === i ? (
-                        <><span className="spin spin-sm" /> Image...</>
-                      ) : img ? 'Nouvelle image' : '+ Image'}
+                      {imgLoading === i ? <><span className="spin spin-xs" /> Image…</> : img ? '↻ Image' : '+ Image'}
                     </button>
-                    <div className="act-spacer" />
-                    <button className="act-primary" onClick={() => openInNetwork(i)}>
-                      Poster sur {network === 'twitter' ? 'X' : 'LinkedIn'} →
+                    <span className="card-foot-spacer" />
+                    <button className="card-publish" onClick={() => openInNetwork(i)}>
+                      Poster sur {isLi ? 'LinkedIn' : 'X'} <span className="card-publish-arrow">→</span>
                     </button>
-                  </div>
+                  </footer>
                 </article>
               )
             })}
-          </div>
+          </section>
         )}
 
-        {/* Empty state hint */}
         {posts.length === 0 && !loading && (
-          <div className="empty">
-            <p>Astuce : utilise <button onClick={() => router.push('/brief')} className="link">/brief</button> pour des idées du jour, ou <button onClick={() => router.push('/library')} className="link">/library</button> pour piocher un hook.</p>
+          <div className="hint">
+            <p>
+              Astuce : utilise{' '}
+              <button onClick={() => router.push('/brief')} className="hint-link">/brief</button>
+              {' '}pour des idées du jour, ou{' '}
+              <button onClick={() => router.push('/library')} className="hint-link">/library</button>
+              {' '}pour piocher un hook.
+            </p>
           </div>
         )}
 
         <style jsx>{`
-          /* === Composer === */
+          /* === COMPOSER === */
           .composer {
             background: var(--bg-elevated);
             border: 1px solid var(--border);
-            border-radius: var(--r-lg);
-            padding: 16px;
+            border-radius: var(--r-xl);
+            overflow: hidden;
+            transition: border-color var(--t-fast) var(--ease);
+          }
+          .composer:focus-within {
+            border-color: var(--border-focus);
+          }
+          .composer-inner {
+            padding: ${isLi ? '20px 22px 16px' : '18px 20px 14px'};
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
           }
 
-          .prompt-input {
+          .prompt {
             width: 100%;
             background: transparent;
             border: none;
             color: var(--text);
-            font-size: 16px;
+            font-size: ${isLi ? '17px' : '16px'};
             line-height: 1.55;
             resize: none;
             font-family: var(--font);
-            letter-spacing: -0.005em;
+            letter-spacing: -0.01em;
           }
-          .prompt-input::placeholder {
+          .prompt::placeholder {
             color: var(--text-muted);
           }
+          .prompt:focus { box-shadow: none; }
 
-          .format-row {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-          }
-          .format-extra {
-            margin-top: -8px;
-          }
-          .fmt-chip {
-            background: var(--card);
+          .formats { display: flex; gap: 5px; flex-wrap: wrap; }
+
+          .pill {
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            color: var(--text-muted);
+            color: var(--text-secondary);
             font-size: 12px;
             font-weight: 500;
-            padding: 5px 12px;
+            padding: 5px 13px;
             border-radius: 100px;
+            letter-spacing: -0.005em;
           }
-          .fmt-chip:hover {
-            color: var(--text-secondary);
-            border-color: var(--border-strong);
-          }
-          .fmt-on {
+          .pill:hover {
             color: var(--text);
-            background: var(--surface);
             border-color: var(--border-strong);
           }
-          .fmt-more {
-            background: transparent;
-            border: 1px solid var(--border);
+          .pill-on {
+            color: var(--accent-text-on);
+            background: var(--accent);
+            border-color: var(--accent);
+            font-weight: 600;
+          }
+          .pill-more {
             color: var(--text-muted);
-            font-size: 14px;
-            font-weight: 700;
-            width: 28px;
-            height: 28px;
-            border-radius: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1;
+            font-family: var(--mono);
+            min-width: 38px;
+            padding: 5px 10px;
           }
 
-          .active-chips {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-          }
-          .active-chip {
+          .active-row { display: flex; gap: 6px; flex-wrap: wrap; }
+          .active {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: var(--accent-bg);
+            background: var(--accent-soft);
             border: 1px solid var(--accent-border);
             color: var(--text);
             font-size: 11px;
-            padding: 4px 4px 4px 10px;
+            padding: 4px 4px 4px 4px;
             border-radius: 100px;
             font-family: var(--mono);
           }
-          .active-chip button {
+          .active-label {
+            background: var(--accent);
+            color: var(--accent-text-on);
+            padding: 2px 8px;
+            border-radius: 100px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .active-val { padding: 0 4px 0 0; }
+          .active button {
             background: transparent;
             border: none;
             color: var(--text-muted);
             font-size: 16px;
             line-height: 1;
-            padding: 0 6px;
+            padding: 0 8px 0 4px;
           }
-          .active-chip button:hover { color: var(--text); }
+          .active button:hover { color: var(--text); }
 
           .err {
             font-size: 12px;
             color: var(--danger);
-            padding: 8px 12px;
-            background: rgba(239, 68, 68, 0.06);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            border-radius: var(--r-sm);
+            padding: 10px 12px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.22);
+            border-radius: var(--r-md);
           }
 
-          .btn-gen {
-            background: var(--text);
-            color: var(--bg);
+          /* === Generate button === */
+          .btn-primary {
+            width: 100%;
+            background: var(--accent);
+            color: var(--accent-text-on);
             border: none;
-            border-radius: var(--r-md);
-            padding: 13px 16px;
+            padding: ${isLi ? '15px 18px' : '14px 16px'};
             font-size: 14px;
             font-weight: 600;
+            letter-spacing: -0.01em;
+            border-top: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            letter-spacing: -0.01em;
           }
-          .btn-gen:hover:not(:disabled) {
-            background: #fff;
+          .btn-primary:hover:not(:disabled) {
+            background: ${isLi ? '#5cb0ff' : '#fff'};
           }
-          .btn-gen.is-loading { background: var(--text-muted); color: var(--bg); }
+          .btn-primary.loading {
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+          }
+          .btn-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+          }
           .kbd {
             font-family: var(--mono);
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 500;
-            opacity: 0.6;
-            padding: 2px 6px;
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 4px;
+            opacity: 0.5;
+            padding: 2px 7px;
+            background: rgba(0, 0, 0, 0.18);
+            border-radius: 5px;
+          }
+          html[data-network="linkedin"] .kbd {
+            background: rgba(255, 255, 255, 0.15);
           }
 
           .spin {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
             border: 1.5px solid currentColor;
             border-top-color: transparent;
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
             display: inline-block;
           }
-          .spin-sm { width: 11px; height: 11px; border-width: 1px; }
-          @keyframes spin { to { transform: rotate(360deg); } }
+          .spin-xs { width: 10px; height: 10px; border-width: 1.2px; }
 
-          /* === Results === */
+          /* === RESULTS === */
           .results {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 24px;
+            gap: ${isLi ? '14px' : '10px'};
+            margin-top: 28px;
           }
 
           .post-card {
             background: var(--bg-elevated);
             border: 1px solid var(--border);
-            border-radius: var(--r-lg);
-            padding: 18px;
+            border-radius: var(--r-xl);
+            padding: ${isLi ? '24px' : '18px'};
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            transition: border-color 0.15s;
+            gap: ${isLi ? '18px' : '14px'};
+            transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
           }
-          .post-card:hover { border-color: var(--border-strong); }
+          .post-card:hover {
+            border-color: var(--border-strong);
+          }
 
-          .pc-meta {
+          .card-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
           }
-          .pc-type {
+          .card-type {
             font-size: 10px;
             font-weight: 700;
-            color: var(--text-muted);
+            color: var(--net);
             font-family: var(--mono);
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
+            padding: 4px 9px;
+            background: var(--net-soft);
+            border-radius: 100px;
           }
-          .pc-chars {
+          .card-chars {
             font-size: 11px;
             color: var(--text-faint);
             font-family: var(--mono);
+            letter-spacing: 0.02em;
           }
-          .pc-chars.over { color: var(--danger); font-weight: 600; }
+          .card-chars.over { color: var(--danger); font-weight: 600; }
+          .card-chars-sep { opacity: 0.4; margin: 0 1px; }
 
-          .pc-text {
-            font-size: 15px;
-            line-height: 1.6;
+          .card-text {
+            font-size: ${isLi ? '16px' : '15px'};
+            line-height: ${isLi ? '1.7' : '1.55'};
             color: var(--text);
             white-space: pre-wrap;
             letter-spacing: -0.005em;
+            font-family: var(--font);
           }
-          .pc-edit {
+
+          .card-edit {
             width: 100%;
             background: var(--bg);
             border: 1px solid var(--border-strong);
-            border-radius: var(--r-sm);
+            border-radius: var(--r-md);
             color: var(--text);
-            font-size: 15px;
-            line-height: 1.6;
-            padding: 12px;
+            font-size: ${isLi ? '16px' : '15px'};
+            line-height: ${isLi ? '1.7' : '1.55'};
+            padding: 14px;
             resize: vertical;
             font-family: var(--font);
           }
 
-          .pc-image {
+          /* === Inline image === */
+          .card-img {
             border-radius: var(--r-md);
             overflow: hidden;
             background: var(--bg);
+            border: 1px solid var(--border);
           }
-          .pc-image img {
+          .card-img img {
             width: 100%;
             display: block;
+            background: var(--bg);
           }
-          .pc-img-actions {
+          .card-img-bar {
             display: flex;
             gap: 6px;
             align-items: center;
             padding: 10px 12px;
-            background: var(--surface);
+            background: var(--bg-card);
             border-top: 1px solid var(--border);
           }
-          .pc-img-btn {
+          .card-img-act {
             background: transparent;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-strong);
             color: var(--text-secondary);
             font-size: 11px;
-            padding: 4px 10px;
+            padding: 5px 11px;
             border-radius: var(--r-sm);
             font-family: var(--mono);
             text-decoration: none;
           }
-          .pc-img-btn:hover { color: var(--text); border-color: var(--border-strong); }
-          .pc-img-prov {
-            font-size: 10px;
+          .card-img-act:hover { color: var(--text); border-color: var(--text-faint); }
+          .card-img-prov {
+            font-size: 9px;
             color: var(--text-faint);
             font-family: var(--mono);
             margin-left: auto;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
           }
 
-          .pc-canva {
-            background: var(--surface);
+          .card-canva {
+            background: var(--bg-card);
             border: 1px dashed var(--border-strong);
             border-radius: var(--r-md);
-            padding: 12px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
           }
-          .pc-canva-note {
-            font-size: 11px;
-            color: var(--text-muted);
-          }
-          .pc-canva-btn {
-            background: var(--text);
-            color: var(--bg);
+          .card-canva p {
             font-size: 12px;
-            padding: 6px 12px;
+            color: var(--text-secondary);
+            margin: 0;
+            line-height: 1.5;
+          }
+          .card-canva-btn {
+            background: var(--accent);
+            color: var(--accent-text-on);
+            font-size: 12px;
+            padding: 8px 14px;
             border-radius: var(--r-sm);
             text-align: center;
             font-weight: 600;
             align-self: flex-start;
           }
 
-          .pc-actions {
+          .card-foot {
             display: flex;
-            gap: 4px;
+            gap: 6px;
             align-items: center;
-            padding-top: 14px;
+            padding-top: ${isLi ? '18px' : '14px'};
             border-top: 1px solid var(--border);
             flex-wrap: wrap;
           }
-          .act {
+          .card-act {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-secondary);
             font-size: 12px;
-            padding: 5px 12px;
+            padding: 6px 13px;
             border-radius: var(--r-sm);
             font-weight: 500;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-          }
-          .act:hover:not(:disabled) {
-            color: var(--text);
-            border-color: var(--border-strong);
-            background: var(--card);
-          }
-          .act-on {
-            color: var(--text);
-            background: var(--surface);
-            border-color: var(--border-strong);
-          }
-          .act-spacer { flex: 1; }
-          .act-primary {
-            background: var(--text);
-            color: var(--bg);
-            border: none;
-            font-size: 12px;
-            padding: 6px 14px;
-            border-radius: var(--r-sm);
-            font-weight: 600;
             letter-spacing: -0.005em;
           }
-          .act-primary:hover { background: #fff; }
+          .card-act:hover:not(:disabled) {
+            color: var(--text);
+            border-color: var(--border-strong);
+            background: var(--bg-card);
+          }
+          .card-act-on {
+            color: var(--text);
+            background: var(--bg-card);
+            border-color: var(--border-strong);
+          }
+          .card-foot-spacer { flex: 1; }
+          .card-publish {
+            background: var(--accent);
+            color: var(--accent-text-on);
+            border: none;
+            font-size: 12px;
+            padding: 7px 14px;
+            border-radius: var(--r-sm);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: -0.005em;
+          }
+          .card-publish:hover {
+            background: ${isLi ? '#5cb0ff' : '#fff'};
+          }
+          .card-publish-arrow {
+            transition: transform var(--t-fast) var(--ease);
+          }
+          .card-publish:hover .card-publish-arrow {
+            transform: translateX(2px);
+          }
 
-          .empty {
-            margin-top: 32px;
+          .hint {
+            margin-top: 36px;
             text-align: center;
             color: var(--text-muted);
             font-size: 13px;
           }
-          .empty p { margin: 0; }
-          .link {
+          .hint p { margin: 0; }
+          .hint-link {
             background: transparent;
             border: none;
             color: var(--text);
@@ -678,13 +713,13 @@ export default function Home() {
             padding: 0;
             font-family: var(--mono);
           }
-          .link:hover { text-decoration-color: var(--text); }
+          .hint-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
 
           @media (max-width: 600px) {
-            .composer { padding: 12px; }
-            .prompt-input { font-size: 15px; }
-            .post-card { padding: 14px; }
-            .pc-text { font-size: 14px; }
+            .composer-inner { padding: 16px; }
+            .prompt { font-size: 15px; }
+            .post-card { padding: 16px; }
+            .card-text { font-size: 14px; }
           }
         `}</style>
       </Layout>

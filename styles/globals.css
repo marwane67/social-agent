@@ -1,102 +1,237 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ==========================================================
+   DESIGN SYSTEM — adaptive per network
+   ========================================================== */
+
 :root {
-  /* Backgrounds — almost-black with subtle elevation */
-  --bg: #0a0a0a;
-  --bg-elevated: #131313;
-  --card: #161616;
-  --card-hover: #1c1c1c;
-  --surface: #1f1f1f;
+  /* === Twitter mode (default) — dense, dark, punchy === */
+  --bg: #0a0a0b;
+  --bg-elevated: #131316;
+  --bg-card: #17171b;
+  --bg-card-hover: #1c1c21;
+  --bg-surface: #20202a;
 
-  /* Borders — barely visible, just enough to separate */
-  --border: #1f1f1f;
-  --border-strong: #2a2a2a;
+  /* Borders */
+  --border: #1f1f24;
+  --border-strong: #2c2c33;
+  --border-focus: #3f3f46;
 
-  /* Text — clean grayscale */
-  --text: #ededed;
-  --text-secondary: #a8a8a8;
-  --text-muted: #6e6e6e;
-  --text-faint: #4a4a4a;
+  /* Text */
+  --text: #f4f4f5;
+  --text-secondary: #a8a8b0;
+  --text-muted: #6e6e7a;
+  --text-faint: #4a4a55;
 
-  /* One single accent color used sparingly */
+  /* Twitter accent */
   --accent: #ffffff;
-  --accent-bg: rgba(255, 255, 255, 0.06);
-  --accent-border: rgba(255, 255, 255, 0.15);
+  --accent-soft: rgba(255, 255, 255, 0.08);
+  --accent-border: rgba(255, 255, 255, 0.18);
+  --accent-text-on: #0a0a0b;
 
-  /* Network identity colors — only used in network-specific contexts */
-  --twitter: #ffffff;
-  --linkedin: #0a66c2;
+  /* Network color (used in glyphs / borders / focus rings) */
+  --net: #ffffff;
+  --net-soft: rgba(255, 255, 255, 0.1);
+  --net-strong: rgba(255, 255, 255, 0.3);
 
   /* Semantic */
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #ef4444;
 
-  /* Radius — slightly rounded, not pillowy */
+  /* Type */
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Inter', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Density (Twitter = compact) */
+  --density: 1;
+  --space-base: 4px;
+  --content-max: 720px;
+  --line-height-body: 1.55;
+  --letter-spacing-body: -0.005em;
+
+  /* Radius */
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 14px;
-
-  /* Spacing scale */
-  --s-1: 4px;
-  --s-2: 8px;
-  --s-3: 12px;
-  --s-4: 16px;
-  --s-5: 24px;
-  --s-6: 32px;
-  --s-7: 48px;
-
-  /* Typography */
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --r-xl: 18px;
 
   /* Layout */
-  --sidebar-w: 220px;
-  --content-max: 760px;
+  --sidebar-w: 232px;
 
-  /* Compatibility aliases for legacy components */
-  --card2: var(--surface);
+  /* Motion */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 120ms;
+  --t-med: 220ms;
+  --t-slow: 380ms;
+
+  /* Compatibility aliases */
+  --card: var(--bg-card);
+  --card2: var(--bg-surface);
   --border2: var(--border-strong);
   --text2: var(--text-secondary);
   --muted: var(--text-muted);
-  --accent-dim: var(--accent-bg);
-  --li: var(--linkedin);
+  --accent-dim: var(--accent-soft);
+  --li: #0a66c2;
   --li-dim: rgba(10, 102, 194, 0.08);
   --li-border: rgba(10, 102, 194, 0.2);
+  --linkedin: #0a66c2;
+  --twitter: #ffffff;
   --radius: var(--r-lg);
   --radius-sm: var(--r-sm);
+  --bg-hover: var(--bg-card-hover);
+  --surface: var(--bg-surface);
 }
 
-html, body {
+/* === LinkedIn mode — spacious, professional, blue accent === */
+html[data-network="linkedin"] {
+  --bg: #08111c;
+  --bg-elevated: #0c1a2c;
+  --bg-card: #102338;
+  --bg-card-hover: #15293f;
+  --bg-surface: #1a324c;
+
+  --border: #1c3251;
+  --border-strong: #2a456b;
+  --border-focus: #3b9eff;
+
+  --text: #f0f6ff;
+  --text-secondary: #b0c4d8;
+  --text-muted: #7a92ad;
+  --text-faint: #4d617a;
+
+  --accent: #3b9eff;
+  --accent-soft: rgba(59, 158, 255, 0.1);
+  --accent-border: rgba(59, 158, 255, 0.3);
+  --accent-text-on: #ffffff;
+
+  --net: #3b9eff;
+  --net-soft: rgba(59, 158, 255, 0.1);
+  --net-strong: rgba(59, 158, 255, 0.4);
+
+  /* LinkedIn = more spacious */
+  --density: 1.15;
+  --content-max: 760px;
+  --line-height-body: 1.65;
+  --letter-spacing-body: -0.003em;
+
+  /* Slightly larger radii for friendlier feel */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+
+  /* Body text larger */
+  font-size: 15px;
+}
+
+/* ==========================================================
+   BASE
+   ========================================================== */
+
+html {
   background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
-  min-height: 100vh;
+  transition: background var(--t-med) var(--ease);
 }
 
 body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 14px;
-  line-height: 1.55;
-  letter-spacing: -0.005em;
+  transition: background var(--t-med) var(--ease), color var(--t-med) var(--ease);
 }
 
-::selection { background: var(--text); color: var(--bg); }
+::selection { background: var(--accent); color: var(--accent-text-on); }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
-button { font-family: var(--font); cursor: pointer; transition: all 0.12s ease; }
-button:disabled { cursor: not-allowed; opacity: 0.4; }
+button {
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+button:disabled { cursor: not-allowed; opacity: 0.45; }
+button:active:not(:disabled) { transform: translateY(0.5px); }
 
-textarea, input, select { font-family: var(--font); outline: none; }
-textarea:focus, input:focus, select:focus { border-color: var(--text-faint); }
+textarea, input, select {
+  font-family: var(--font);
+  outline: none;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+textarea:focus, input:focus, select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--net-soft);
+}
 
 a { color: inherit; text-decoration: none; }
 
-h1, h2, h3, h4 { letter-spacing: -0.02em; line-height: 1.2; }
+h1, h2, h3, h4 {
+  letter-spacing: -0.022em;
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+/* ==========================================================
+   ANIMATIONS
+   ========================================================== */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-strong {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Page transitions — applied to .page-body */
+.page-body { animation: fade-in var(--t-med) var(--ease) both; }
+.post-card-anim { animation: fade-in-strong var(--t-med) var(--ease) both; }
+
+/* Stagger delays for results */
+.post-card-anim:nth-child(1) { animation-delay: 0ms; }
+.post-card-anim:nth-child(2) { animation-delay: 60ms; }
+.post-card-anim:nth-child(3) { animation-delay: 120ms; }
+.post-card-anim:nth-child(4) { animation-delay: 180ms; }
+.post-card-anim:nth-child(5) { animation-delay: 240ms; }
+
+/* Shimmer for skeletons */
+.skel {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 0%,
+    var(--bg-card-hover) 50%,
+    var(--bg-card) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: var(--r-sm);
+}
