@@ -41,115 +41,107 @@ export type Brain = {
 
 const KEY = 'sa-brain'
 
-// Default brain pré-rempli avec le contexte de Marwane (d'après ses projets)
+// Default brain pré-rempli avec le contexte réel de Marwane
 export const DEFAULT_BRAIN: Brain = {
   projects: [
     {
       id: 'axora',
       name: 'Axora',
       status: 'Lancé avril 2026 — building in public',
-      pitch: "Marketplace francophone d'acquisition de business digitaux (BE/FR). Équivalent d'Acquire.com avec IA, matching intelligent, escrow, due diligence automatisée.",
-      audience: 'Entrepreneurs francophones (acheteurs + vendeurs de business digitaux)',
+      pitch: "Marketplace pour acheter et vendre des entreprises. Francophone (BE/FR). Pour entrepreneurs qui veulent reprendre un business existant ou revendre le leur.",
+      audience: 'Entrepreneurs, repreneurs, vendeurs d\'entreprises en Belgique et France',
       key_messages: [
-        'Le marché francophone de l\'acquisition de business digitaux est cassé (WhatsApp groups, pas de transparence)',
-        "Axora = la transparence, les chiffres réels, l'IA pour matcher",
-        "Axora c'est construit en public, personne ne cache rien",
-        'Première plateforme locale qui tient tête à Acquire.com en FR',
+        'Acheter une entreprise est plus simple que de la créer — Axora le prouve',
+        'Le marché de la transmission d\'entreprises francophone est opaque — Axora apporte la transparence',
+        'Chaque annonce est vérifiée, les chiffres sont réels',
+        'Building in public : on montre la construction de la plateforme',
       ],
-      tone: 'Building in public — cash, transparent, chiffres réels, anecdotes de construction',
-      cta: 'Rejoins la waitlist / checke la plateforme',
+      tone: 'Building in public — cash, transparent, chiffres réels, storytelling de construction de la plateforme',
+      cta: 'Découvre Axora / rejoins la plateforme',
     },
     {
       id: 'pulsa',
       name: 'Pulsa Creatives',
       status: 'Agence active — clients en cours',
-      pitch: "L'agence IA de Bruxelles. On livre en jours ce que les autres promettent en mois.",
-      audience: 'PME, startups, entrepreneurs qui veulent automatiser/builder avec l\'IA vite',
+      pitch: "Agence de création de sites web à Bruxelles. On livre des sites web propres, rapides, qui convertissent. Clients PME, startups, entrepreneurs.",
+      audience: 'PME, startups, entrepreneurs qui veulent un site web professionnel qui convertit',
       key_messages: [
-        'Vitesse de livraison imbattable grâce à l\'IA',
-        'Résultats concrets (sites, outils, automations)',
-        'Équipe small + AI-first',
-        'Brussels-based, francophone',
+        'Des sites web livrés rapidement, design premium',
+        'Focus conversion : chaque page a un objectif business',
+        'Cas clients concrets : avant/après, résultats chiffrés',
+        'Équipe Bruxelles, francophone',
       ],
-      tone: 'Professionnel mais cash. Montre les résultats (avant/après, chiffres, témoignages).',
-      cta: 'Book une demo / DM moi',
+      tone: 'Professionnel, axé résultats. Montre des cas clients, des sites livrés, des avant/après.',
+      cta: 'Book un call / découvre les projets récents',
     },
     {
       id: 'personal',
-      name: 'Marwane personnel',
+      name: 'Marwane',
       status: 'Always on',
-      pitch: "Marwane Moustapha — entrepreneur tech à Bruxelles. Build Axora + Pulsa. Reference IA francophone.",
-      audience: 'Entrepreneurs, devs, founders francophones curieux d\'IA + business',
+      pitch: "Marwane Moustapha — entrepreneur à Bruxelles. Fondateur d\'Axora (marketplace d\'entreprises) et Pulsa Creatives (agence de sites web). Partage son parcours, ses projets, et les sites web qu\'il crée.",
+      audience: 'Entrepreneurs, founders, repreneurs d\'entreprises francophones',
       key_messages: [
-        'Je build en public, je montre tout',
-        "L'IA n'est pas un outil, c'est un co-founder",
-        'Francophone ≠ moins ambitieux que US',
-        'Bruxelles comme hub tech émergent',
+        'Je construis deux projets en parallèle : une marketplace et une agence',
+        'Je montre tout : les sites web que je livre avec Pulsa, les features que je ship sur Axora',
+        'Leçons d\'entrepreneur qui gère plusieurs business en même temps',
+        'Bruxelles comme hub tech émergent pour entrepreneurs francophones',
       ],
-      tone: 'Direct, cash, mélange FR/EN tech, vulnérable quand il faut, confiant sans arrogance',
-      cta: 'Follow pour plus / DM ouvert',
+      tone: 'Direct, cash, authentique, mélange FR/EN naturel, vulnérable sur les galères',
+      cta: 'Follow / DM ouvert',
     },
   ],
 
   channels: [
     {
-      id: '69d7fead031bfa423ce86cda',       // Twitter mrwn_one (from Buffer)
+      id: '69d7fead031bfa423ce86cda',       // Twitter mrwn_one
       name: 'mrwn_one',
       service: 'twitter',
-      purpose: 'Twitter personnel de Marwane — building in public',
-      projects: ['axora', 'personal'],       // Axora + perso (pas Pulsa sur X)
+      purpose: 'Twitter personnel de Marwane — contenu perso + building in public Axora',
+      projects: ['axora', 'personal'],
       voice: 'Punchy, max 280 chars, zéro emoji, hook fort ligne 1, mélange FR/EN',
     },
     {
       id: '69d7fe5a031bfa423ce86b5f',       // LinkedIn Marwane Moustapha
       name: 'Marwane Moustapha',
       service: 'linkedin',
-      purpose: 'LinkedIn personnel de Marwane — multi-axes (Axora + Pulsa + perso)',
-      projects: ['axora', 'pulsa', 'personal'],  // tout
-      voice: 'Professionnel mais humain, 800-1500 chars, hook fort, format aéré, storytelling',
+      purpose: 'LinkedIn personnel de Marwane — son contenu perso, ses sites web Pulsa, ses updates Axora',
+      projects: ['personal', 'pulsa', 'axora'],
+      voice: 'Professionnel mais humain, 800-1500 chars, hook fort, format aéré, storytelling. Zéro emoji.',
     },
     {
       id: '69d7fe5a031bfa423ce86b5e',       // LinkedIn axora-app
       name: 'axora-app',
       service: 'linkedin',
-      purpose: 'Page LinkedIn Axora — building in public uniquement Axora',
-      projects: ['axora'],                   // Axora uniquement
-      voice: 'Ton plus institutionnel côté plateforme, mais toujours transparent. Jamais de personal/Pulsa ici.',
+      purpose: 'Page LinkedIn Axora — UNIQUEMENT la marketplace d\'achat/vente d\'entreprises',
+      projects: ['axora'],
+      voice: 'Ton de la plateforme : institutionnel mais transparent. Parle UNIQUEMENT de la marketplace, des fonctionnalités, des success stories d\'acquéreurs/vendeurs. JAMAIS de contenu Pulsa, JAMAIS de perso.',
     },
   ],
 
   axes: [
     {
-      id: 'axora_launch',
+      id: 'axora_building',
       name: 'Axora — Building in public',
-      description: 'Partager le parcours post-lancement d\'Axora : premières users, features shipped, lessons learned, chiffres. Créer du momentum.',
+      description: 'Partager la construction de la marketplace : features shipped, premiers utilisateurs, stats de la plateforme, retours clients. Objectif : créer du momentum autour de la marketplace d\'achat/vente d\'entreprises.',
       projects: ['axora'],
       channels: ['69d7fead031bfa423ce86cda', '69d7fe5a031bfa423ce86b5f', '69d7fe5a031bfa423ce86b5e'],
       frequency: '3-5x/semaine',
     },
     {
-      id: 'pulsa_offer',
-      name: 'Pulsa — Vente de l\'offre',
-      description: 'Mettre en avant les livrables Pulsa (sites IA, outils, automations) pour capter des clients. Cas clients, avant/après, témoignages.',
+      id: 'pulsa_showcase',
+      name: 'Pulsa — Showcase sites web',
+      description: 'Mettre en avant les sites web livrés par Pulsa Creatives. Avant/après visuels, cas clients, process de création, résultats obtenus (conversion, traffic). Objectif : capter de nouveaux clients pour l\'agence.',
       projects: ['pulsa'],
-      channels: ['69d7fe5a031bfa423ce86b5f'],  // LinkedIn Marwane uniquement (pas de compte Pulsa)
+      channels: ['69d7fe5a031bfa423ce86b5f'],
       frequency: '2-3x/semaine',
     },
     {
-      id: 'personal_thought_leadership',
-      name: 'Marwane — Thought leadership IA',
-      description: 'Positionner Marwane comme LA référence francophone IA + entrepreneuriat. Hot takes, frameworks, visions marché.',
+      id: 'marwane_personal',
+      name: 'Marwane — Contenu personnel',
+      description: 'Marwane partage son parcours d\'entrepreneur, les sites web qu\'il crée avec Pulsa, les features Axora qu\'il ship. Mélange de perso et de pro. Humain, direct.',
       projects: ['personal'],
       channels: ['69d7fead031bfa423ce86cda', '69d7fe5a031bfa423ce86b5f'],
       frequency: '2-3x/semaine',
-    },
-    {
-      id: 'cross_building_public',
-      name: 'Transversal — Building in public',
-      description: 'Storytelling personnel de la double vie Axora + Pulsa. Comment Marwane gère les deux. Les galères, les wins, les décisions.',
-      projects: ['axora', 'pulsa', 'personal'],
-      channels: ['69d7fead031bfa423ce86cda', '69d7fe5a031bfa423ce86b5f'],
-      frequency: '1-2x/semaine',
     },
   ],
 

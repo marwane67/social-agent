@@ -17,12 +17,12 @@ type Msg = {
 }
 
 const SUGGESTIONS = [
-  { label: 'Ma semaine + images', prompt: 'Planifie-moi 7 posts pour la semaine prochaine sur LinkedIn, thème building Axora, AVEC images générées' },
-  { label: 'Axora launch (14j)', prompt: 'Planifie 14 jours de posts pour l\'axe axora_launch avec images' },
+  { label: 'Semaine Axora avec images', prompt: 'Planifie-moi 7 jours de posts Axora avec images, thème building in public de la marketplace' },
+  { label: 'Semaine Pulsa (sites web)', prompt: 'Planifie 7 jours de posts Pulsa sur LinkedIn, montre les sites web que je livre, avec images' },
+  { label: 'Semaine perso', prompt: 'Planifie 7 jours de contenu personnel sur LinkedIn et Twitter, thème mon quotidien d\'entrepreneur entre Pulsa et Axora' },
   { label: 'Images pour existants', prompt: 'Génère des images pour tous mes posts planifiés qui n\'en ont pas encore' },
   { label: 'Brief du jour', prompt: 'Donne-moi le brief du jour avec 5 idées de posts' },
   { label: 'Mes performances', prompt: 'Analyse mes performances et dis-moi ce qui marche le mieux' },
-  { label: 'Optimise ma bio', prompt: 'Génère 5 variantes optimisées de ma bio LinkedIn' },
 ]
 
 type Resources = {
@@ -204,18 +204,50 @@ export default function AgentPage() {
           saveBatch(entries)
 
           const imgCount = Object.keys(imageUrls).length
+
+          // === End-to-end : auto-publish to Buffer by default ===
+          let bufferMsg = ''
+          const shouldPublish = args.publish_to_buffer !== false // default true
+          if (shouldPublish) {
+            try {
+              const { getBrain, getChannelsForProject } = await import('../lib/brain')
+              const brain = getBrain()
+              let forcedProfileIds: string[] | undefined
+              if (args.projectId) {
+                const chans = getChannelsForProject(brain, args.projectId)
+                if (chans.length > 0) forcedProfileIds = chans.map(c => c.id)
+              }
+              const bufferBody: any = { entries }
+              if (forcedProfileIds) bufferBody.profileIds = forcedProfileIds
+              const bufRes = await fetch('/api/buffer/schedule', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bufferBody),
+              })
+              const bufData = await bufRes.json()
+              if (bufRes.ok && bufData.created > 0) {
+                bufferMsg = ` · ${bufData.created}/${bufData.total} uploadés dans Buffer`
+              } else if (bufRes.ok) {
+                bufferMsg = ` · Buffer : 0 uploadé (${bufData.details?.failed?.[0]?.error || 'pas de profil'})`
+              } else {
+                bufferMsg = ` · Buffer indisponible`
+              }
+            } catch {
+              bufferMsg = ' · Buffer indisponible'
+            }
+          }
+
           const resourcesUsed = [
-            `${days} hooks rotation`,
-            net === 'linkedin' ? `${liFrameworks.length} frameworks rotation` : '',
-            voiceProfile ? 'voice profile' : '',
-            perfBlock ? 'top perfs' : '',
-            recentEntries.length > 0 ? 'dedup calendrier' : '',
-            args.with_images ? `${imgCount}/${validResults.length} images générées` : '',
-          ].filter(Boolean).join(' · ')
+            `${days} hooks`,
+            net === 'linkedin' ? `${liFrameworks.length} frameworks` : '',
+            voiceProfile ? 'voice' : '',
+            perfBlock ? 'perfs' : '',
+            recentEntries.length > 0 ? 'dedup' : '',
+            args.with_images ? `${imgCount} images` : '',
+          ].filter(Boolean).join(' + ')
 
           return {
             success: true,
-            summary: `${validResults.length}/${days} posts planifiés sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'}. ${resourcesUsed}`,
+            summary: `${validResults.length}/${days} posts sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'} [${resourcesUsed}]${bufferMsg}`,
             data: { entries_count: entries.length, images: imgCount },
           }
         }
@@ -544,17 +576,45 @@ export default function AgentPage() {
           saveBatch(entries)
 
           const imgCount = Object.keys(imageUrls).length
+
+          // === End-to-end : auto-publish to Buffer with axis-based routing ===
+          let bufferMsg = ''
+          const shouldPublish = args.publish_to_buffer !== false
+          if (shouldPublish) {
+            try {
+              const { getChannelsForAxis } = await import('../lib/brain')
+              const chans = getChannelsForAxis(brain, axis.id)
+              const forcedProfileIds = chans.length > 0 ? chans.map(c => c.id) : undefined
+              const bufferBody: any = { entries }
+              if (forcedProfileIds) bufferBody.profileIds = forcedProfileIds
+              const bufRes = await fetch('/api/buffer/schedule', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bufferBody),
+              })
+              const bufData = await bufRes.json()
+              if (bufRes.ok && bufData.created > 0) {
+                bufferMsg = ` · ${bufData.created}/${bufData.total} uploadés dans Buffer (${chans.length} channels)`
+              } else if (bufRes.ok) {
+                bufferMsg = ` · Buffer : 0 uploadé (${bufData.details?.failed?.[0]?.error || 'pas de profil'})`
+              } else {
+                bufferMsg = ` · Buffer indisponible`
+              }
+            } catch {
+              bufferMsg = ' · Buffer indisponible'
+            }
+          }
+
           const resources = [
             `${days} hooks`,
             net === 'linkedin' ? `${liFrameworks.length} frameworks` : '',
             voiceProfile ? 'voice' : '',
-            perfBlock ? 'top perfs' : '',
+            perfBlock ? 'perfs' : '',
             args.with_images ? `${imgCount} images` : '',
           ].filter(Boolean).join(' + ')
 
           return {
             success: true,
-            summary: `${results.length}/${days} posts pour "${axis.name}" (${net}) · ${resources}. Router Buffer avec axisId="${axis.id}".`,
+            summary: `${results.length}/${days} posts axe "${axis.name}" [${resources}]${bufferMsg}`,
           }
         }
 

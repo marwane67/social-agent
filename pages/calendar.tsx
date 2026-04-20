@@ -593,7 +593,7 @@ function WeekView({ anchorDate, entries, onSelect }: { anchorDate: Date; entries
               {dayEntries.map(e => (
                 <button key={e.id} onClick={() => onSelect(e)} className={`entry entry-${e.network} entry-${e.status}`}>
                   {e.imageUrl && <img src={e.imageUrl} alt="" className="e-img" />}
-                  <div className="e-time">{new Date(e.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.imageUrl && ' 🖼'}</div>
+                  <div className="e-time">{new Date(e.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.imageUrl && ' '}</div>
                   <div className="e-text">{e.text.slice(0, 60)}{e.text.length > 60 ? '…' : ''}</div>
                 </button>
               ))}
@@ -945,7 +945,7 @@ function DetailModal({
           </div>
         ) : (
           <button onClick={generateImage} disabled={genImg} className="m-genimg">
-            {genImg ? 'Génération en cours (~10s)…' : '🎨 Générer une image pour ce post'}
+            {genImg ? 'Génération en cours (~10s)…' : ' Générer une image pour ce post'}
           </button>
         )}
 

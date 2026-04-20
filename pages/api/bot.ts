@@ -190,7 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case 'help':
       default: {
         return res.status(200).json({
-          message: `🤖 Social Agent Bot\n\nCommandes :\n\n/today — Génère 1 post pour aujourd'hui\n/tomorrow — Génère 1 post pour demain\n/week — Génère 7 posts pour la semaine\n/post [sujet] — Génère 1 post sur un sujet\n/formats — Liste les formats\n\nOptions :\n• Ajoute "linkedin" pour LinkedIn (défaut: Twitter)\n• Ajoute un sujet pour personnaliser\n\nExemples :\n/today J'ai shippé le matching IA d'Axora\n/week linkedin building in public\n/post hot take sur les agences IA`,
+          message: ` Social Agent Bot\n\nCommandes :\n\n/today — Génère 1 post pour aujourd'hui\n/tomorrow — Génère 1 post pour demain\n/week — Génère 7 posts pour la semaine\n/post [sujet] — Génère 1 post sur un sujet\n/formats — Liste les formats\n\nOptions :\n• Ajoute "linkedin" pour LinkedIn (défaut: Twitter)\n• Ajoute un sujet pour personnaliser\n\nExemples :\n/today J'ai shippé le matching IA d'Axora\n/week linkedin building in public\n/post hot take sur les agences IA`,
         })
       }
     }

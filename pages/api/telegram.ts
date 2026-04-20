@@ -114,31 +114,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // === HANDLE VOICE MESSAGES ===
   if (message.voice || message.audio) {
     try {
-      await sendTelegram(chatId, '🎙️ Je transcris ton vocal...')
+      await sendTelegram(chatId, '️ Je transcris ton vocal...')
       const fileId = (message.voice || message.audio).file_id
       const transcript = await transcribeVoice(fileId)
       if (!transcript) {
         await sendTelegram(chatId, "Transcription vide. Réessaye.")
         return res.status(200).json({ ok: true })
       }
-      await sendTelegram(chatId, `📝 *Transcription :*\n_${transcript}_\n\n⏳ Je génère 3 posts à partir de ça...`)
+      await sendTelegram(chatId, ` *Transcription :*\n_${transcript}_\n\n Je génère 3 posts à partir de ça...`)
       // Génère 3 posts dans 3 formats différents à partir du vocal
       const posts = await callAI(`Sur la base de ce vocal de Marwane, génère 3 posts Twitter (280 chars max chacun) avec 3 angles différents.
 
 Vocal transcrit : "${transcript}"
 
 Format obligatoire :
-🟢 RAW BUILD
+ RAW BUILD
 [post]
 
-🟡 STORY
+ STORY
 [post]
 
-🔴 HOT TAKE
+ HOT TAKE
 [post]
 
 Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
-      await sendTelegram(chatId, `*3 posts générés* 🎯\n\n${posts}\n\n_Copie celui que tu préfères._`)
+      await sendTelegram(chatId, `*3 posts générés* \n\n${posts}\n\n_Copie celui que tu préfères._`)
     } catch (e: any) {
       console.error(e)
       await sendTelegram(chatId, `Erreur transcription : ${e.message || 'inconnue'}.\n\nVérifie que GROQ_API_KEY ou OPENAI_API_KEY est configurée.`)
@@ -176,7 +176,7 @@ Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
       case 'start':
       case 'help': {
         await sendTelegram(chatId,
-          `*Social Agent Bot* 🤖\n\n` +
+          `*Social Agent Bot* \n\n` +
           `Commandes :\n\n` +
           `/today — Post pour aujourd'hui\n` +
           `/tomorrow — Post pour demain\n` +
@@ -196,7 +196,7 @@ Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
 
       case 'today':
       case 'aujourdhui': {
-        await sendTelegram(chatId, '⏳ Je génère ton post...')
+        await sendTelegram(chatId, ' Je génère ton post...')
         const f = format || FORMATS[Math.floor(Math.random() * FORMATS.length)]
         const post = await generatePost(cleanRest || "Ce que je build aujourd'hui", f, network)
         await sendTelegram(chatId,
@@ -209,7 +209,7 @@ Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
 
       case 'tomorrow':
       case 'demain': {
-        await sendTelegram(chatId, '⏳ Je génère ton post pour demain...')
+        await sendTelegram(chatId, ' Je génère ton post pour demain...')
         const f = format || FORMATS[Math.floor(Math.random() * FORMATS.length)]
         const post = await generatePost(cleanRest || "Ce que je prépare pour demain", f, network)
         await sendTelegram(chatId,
@@ -222,7 +222,7 @@ Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
 
       case 'week':
       case 'semaine': {
-        await sendTelegram(chatId, '⏳ Je génère 7 posts pour ta semaine...')
+        await sendTelegram(chatId, ' Je génère 7 posts pour ta semaine...')
         const weekPosts = await generateWeek(cleanRest || 'Building Axora, IA, entrepreneuriat', network)
         await sendTelegram(chatId,
           `*7 posts pour la semaine* — ${network === 'linkedin' ? 'LinkedIn' : 'Twitter/X'}\n\n${weekPosts}`
@@ -235,7 +235,7 @@ Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
           await sendTelegram(chatId, 'Donne-moi un sujet.\n\nEx: `/post J\'ai lancé la beta d\'Axora`')
           break
         }
-        await sendTelegram(chatId, '⏳ Je génère...')
+        await sendTelegram(chatId, ' Je génère...')
         const f = format || FORMATS[Math.floor(Math.random() * FORMATS.length)]
         const post = await generatePost(cleanRest, f, network)
         await sendTelegram(chatId,
@@ -254,7 +254,7 @@ Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
       default: {
         // If it's just text without a command, treat as /post
         if (!text.startsWith('/')) {
-          await sendTelegram(chatId, '⏳ Je génère...')
+          await sendTelegram(chatId, ' Je génère...')
           const f = format || FORMATS[Math.floor(Math.random() * FORMATS.length)]
           const post = await generatePost(text, f, network)
           await sendTelegram(chatId,

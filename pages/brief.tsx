@@ -105,7 +105,7 @@ export default function BriefPage() {
 
               {/* Headline */}
               <div className="headline">
-                <div className="hl-icon">☀️</div>
+                <div className="hl-icon"></div>
                 <div className="hl-text">{brief.headline}</div>
               </div>
 

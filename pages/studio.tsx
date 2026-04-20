@@ -46,7 +46,7 @@ export default function StudioPage() {
       <Head><title>Studio — Social Agent</title></Head>
       <Layout title="Studio" subtitle="Tous les outils de création · mais Pulse fait 90% du boulot">
         <div className="intro">
-          💡 <strong>Astuce</strong> : Pulse sait utiliser tous ces outils à ta place. Dis-lui <em>"fais-moi un A/B test sur cette idée"</em>, <em>"optimise ma bio"</em>, <em>"génère-moi un carrousel"</em> et il exécute. Ces pages servent surtout si tu veux du manuel.
+           <strong>Astuce</strong> : Pulse sait utiliser tous ces outils à ta place. Dis-lui <em>"fais-moi un A/B test sur cette idée"</em>, <em>"optimise ma bio"</em>, <em>"génère-moi un carrousel"</em> et il exécute. Ces pages servent surtout si tu veux du manuel.
         </div>
 
         {SECTIONS.map(sec => (

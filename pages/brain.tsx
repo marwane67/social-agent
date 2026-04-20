@@ -115,7 +115,7 @@ export default function BrainHubPage() {
         </div>
 
         <div className="hint">
-          💡 <strong>Plus tu remplis ton Brain, plus Pulse écrit comme toi.</strong> Commence par "Ma voix" (colle 5 posts), puis tracke tes 5 premiers posts dans Performance. À partir de là, l'IA apprend et s'améliore.
+           <strong>Plus tu remplis ton Brain, plus Pulse écrit comme toi.</strong> Commence par "Ma voix" (colle 5 posts), puis tracke tes 5 premiers posts dans Performance. À partir de là, l'IA apprend et s'améliore.
         </div>
 
         <style jsx>{`
