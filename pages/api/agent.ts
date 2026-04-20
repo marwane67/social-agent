@@ -20,8 +20,17 @@ Tu PEUX faire des choses concrètes via tes outils. Quand tu utilises un outil :
 Style :
 - Direct, opérationnel, en français
 - Pas de questions inutiles : assume des choix raisonnables et exécute
-- Tu connais Marwane : building Axora (marketplace acquisition business digitaux FR/BE), build in public, ton direct/cash
-- Réponses courtes (1-3 phrases max quand tu utilises un outil)`
+- Tu connais Marwane : voir le BRAIN ci-dessous qui contient sa stratégie actuelle (projets, channels Buffer, axes de contenu)
+- Réponses courtes (1-3 phrases max quand tu utilises un outil)
+
+RÈGLES DE ROUTING (CRITIQUE) :
+- Quand tu planifies un calendrier lié à un axe spécifique, utilise plan_by_axis (route auto vers les bons channels Buffer)
+- Quand tu envoies dans Buffer, utilise projectId ou axisId pour router vers les BONS channels :
+  * "Axora" → axora-app + Marwane LinkedIn + mrwn_one Twitter
+  * "Pulsa" → Marwane LinkedIn uniquement (PAS axora-app, PAS mrwn_one)
+  * "Personal" → Marwane LinkedIn + mrwn_one Twitter
+- Quand l'utilisateur dit "building in public Axora", utilise l'axe axora_launch
+- Quand il dit "vendre Pulsa" ou "offre Pulsa", utilise l'axe pulsa_offer`
 
 const TOOLS = [
   {
@@ -144,13 +153,31 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'send_to_buffer',
-      description: "Envoie les posts du calendrier dans la queue Buffer pour publication automatique (Twitter/LinkedIn). Le post sera publié à la date prévue par Buffer.",
+      description: "Envoie les posts du calendrier dans la queue Buffer pour publication automatique. Si projectId ou axisId fourni, filtre et route vers les bons channels Buffer.",
       parameters: {
         type: 'object',
         properties: {
           which: { type: 'string', enum: ['all', 'upcoming'], description: 'all = tous, upcoming = seulement les futurs' },
+          projectId: { type: 'string', description: 'Optionnel : filtre les posts par projet (axora, pulsa, personal). Utilise le brain pour router vers les bons channels.' },
+          axisId: { type: 'string', description: 'Optionnel : filtre par axe stratégique (axora_launch, pulsa_offer, etc.).' },
         },
         required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'plan_by_axis',
+      description: "Planifie un calendrier de N posts pour un AXE stratégique spécifique du brain (ex: axora_launch, pulsa_offer, personal_thought_leadership). Les channels cibles sont déterminés automatiquement selon le brain.",
+      parameters: {
+        type: 'object',
+        properties: {
+          axisId: { type: 'string', description: 'ID de l\'axe dans le brain' },
+          days: { type: 'number', description: '1-14 jours' },
+          start_date: { type: 'string', description: 'YYYY-MM-DD, défaut = aujourd\'hui' },
+        },
+        required: ['axisId', 'days'],
       },
     },
   },
@@ -168,6 +195,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const perfHint = clientState.performanceInsights?.totalPosts > 0
     ? `\n\nL'utilisateur a tracké ${clientState.performanceInsights.totalPosts} posts.`
     : ''
+  const brainContext = clientState.brain
+    ? `\n\n${clientState.brain}`
+    : ''
 
   try {
     const response = await fetch(OPENROUTER_URL, {
@@ -180,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: 'anthropic/claude-sonnet-4-6',
         max_tokens: 1500,
         messages: [
-          { role: 'system', content: SYSTEM + networkContext + perfHint },
+          { role: 'system', content: SYSTEM + networkContext + perfHint + brainContext },
           ...messages,
         ],
         tools: TOOLS,

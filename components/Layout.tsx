@@ -14,6 +14,7 @@ const NAV = [
 ]
 
 const MORE = [
+  { href: '/strategy', label: 'Stratégie (brain)' },
   { href: '/voice', label: 'Ma voix' },
   { href: '/bio', label: 'Bio' },
   { href: '/plan', label: 'Plan (séries + A/B)' },

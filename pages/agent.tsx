@@ -236,14 +236,38 @@ export default function AgentPage() {
         case 'send_to_buffer': {
           const which = args.which || 'upcoming'
           const { getEntries } = await import('../lib/calendar')
-          const allEntries = getEntries()
+          const { getBrain, getChannelsForProject, getChannelsForAxis } = await import('../lib/brain')
+          const brain = getBrain()
+          let allEntries = getEntries()
+
+          // Optional filter by project/axis
+          let forcedProfileIds: string[] | undefined
+          if (args.projectId) {
+            const channels = getChannelsForProject(brain, args.projectId)
+            if (channels.length === 0) return { success: false, summary: `Aucun channel Buffer pour le projet "${args.projectId}"` }
+            forcedProfileIds = channels.map(c => c.id)
+            // filter entries by matching project (look for project name/id in topic or text)
+            allEntries = allEntries.filter((e: any) => {
+              const hay = `${e.topic || ''} ${e.text || ''}`.toLowerCase()
+              return hay.includes(args.projectId.toLowerCase())
+            })
+          } else if (args.axisId) {
+            const channels = getChannelsForAxis(brain, args.axisId)
+            if (channels.length === 0) return { success: false, summary: `Aucun channel pour l'axe "${args.axisId}"` }
+            forcedProfileIds = channels.map(c => c.id)
+          }
+
           const toSend = which === 'all'
             ? allEntries
             : allEntries.filter((e: any) => new Date(e.scheduledAt).getTime() > Date.now())
-          if (toSend.length === 0) return { success: false, summary: 'Aucun post à envoyer' }
+          if (toSend.length === 0) return { success: false, summary: 'Aucun post à envoyer (vérifie le filtre)' }
+
+          const body: any = { entries: toSend }
+          if (forcedProfileIds) body.profileIds = forcedProfileIds
+
           const res = await fetch('/api/buffer/schedule', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ entries: toSend }),
+            body: JSON.stringify(body),
           })
           const data = await res.json()
           if (!res.ok) return { success: false, summary: data.error || 'Buffer échoué' }
@@ -251,7 +275,75 @@ export default function AgentPage() {
             const firstErr = data.details?.failed?.[0]?.error || 'aucun profil match'
             return { success: false, summary: `0 envoyé : ${firstErr}` }
           }
-          return { success: true, summary: `${data.created}/${data.total} posts envoyés dans Buffer pour publication auto` }
+          const routing = forcedProfileIds ? ` (routé vers ${forcedProfileIds.length} channel(s))` : ''
+          return { success: true, summary: `${data.created}/${data.total} posts envoyés dans Buffer${routing}` }
+        }
+
+        case 'plan_by_axis': {
+          const { getBrain } = await import('../lib/brain')
+          const brain = getBrain()
+          const axis = brain.axes.find(a => a.id === args.axisId)
+          if (!axis) return { success: false, summary: `Axe "${args.axisId}" introuvable dans le brain` }
+
+          const days = Math.min(Math.max(args.days || 7, 1), 14)
+          const startDate = args.start_date ? new Date(args.start_date) : new Date()
+
+          // Determine network : if axis has at least one linkedin channel, plan LinkedIn version;
+          // if has twitter, plan Twitter. We pick the primary (first) channel's service.
+          const primaryChannel = brain.channels.find(c => axis.channels.includes(c.id))
+          const net = (primaryChannel?.service || 'linkedin') as 'twitter' | 'linkedin'
+          const primaryProject = brain.projects.find(p => axis.projects.includes(p.id))
+          const theme = axis.name + (primaryProject ? ` (${primaryProject.pitch})` : '')
+
+          let voiceProfile: any = null
+          try {
+            const vp = localStorage.getItem('voice-profile')
+            if (vp) voiceProfile = JSON.parse(vp)
+          } catch {}
+
+          const formatPool = net === 'twitter'
+            ? ['raw_build', 'hot_take', 'storytelling', 'one_liner', 'behind_scenes']
+            : ['storytelling_li', 'transparency', 'thought_leadership', 'value_bomb', 'personal_brand']
+
+          const requests = Array.from({ length: days }, (_, i) => {
+            const format = formatPool[i % formatPool.length]
+            const dayContext = `Post ${i + 1}/${days} sur l'axe "${axis.name}". Description axe : ${axis.description}. Avance la narrative.`
+            return fetch('/api/generate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                input: `${theme}. ${dayContext}`,
+                format,
+                network: net,
+                voiceProfile,
+              }),
+            }).then(r => r.json()).then(data => {
+              const p = data.posts?.[0]
+              return p ? { day: i, format, type: p.type, text: p.text } : null
+            }).catch(() => null)
+          })
+
+          const results = (await Promise.all(requests)).filter((r): r is { day: number; format: string; type: string; text: string } => !!r)
+          if (results.length === 0) return { success: false, summary: 'Échec génération — réessaye plus tard' }
+
+          const entries = results.map(r => {
+            const d = new Date(startDate)
+            d.setDate(d.getDate() + r.day)
+            d.setHours(10, 0, 0, 0)
+            return {
+              network: net,
+              format: r.format,
+              topic: `[${axis.name}] ${r.type}`,
+              text: r.text,
+              scheduledAt: d.toISOString(),
+              status: 'scheduled' as const,
+            }
+          })
+          saveBatch(entries)
+          return {
+            success: true,
+            summary: `${results.length}/${days} posts planifiés pour l'axe "${axis.name}" (${net}). Router Buffer via axisId="${axis.id}".`,
+          }
         }
 
         default:
@@ -282,6 +374,11 @@ export default function AgentPage() {
     } catch {}
     try {
       clientState.performanceInsights = computeInsights(getPerformances())
+    } catch {}
+    // Inject brain (strategy) as a prompt block
+    try {
+      const { getBrain, brainAsPromptBlock } = await import('../lib/brain')
+      clientState.brain = brainAsPromptBlock(getBrain())
     } catch {}
 
     const controller = new AbortController()
@@ -702,6 +799,7 @@ function ActionRow({ action, onOpen }: { action: Action; onOpen: (href: string) 
     optimize_bio: 'Bio optimisée',
     sync_to_google_calendar: 'Sync Google Calendar',
     send_to_buffer: 'Envoi Buffer',
+    plan_by_axis: 'Calendrier par axe',
   }
   const label = labels[action.tool] || action.tool
   const ok = action.result?.success !== false
