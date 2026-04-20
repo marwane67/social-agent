@@ -30,9 +30,15 @@ export type BufferAccount = {
   organizationId: string
 }
 
-/* === Token === */
+/* === Token (env var OR override from request header/context) === */
+let overrideToken: string | null = null
+
+export function setOverrideToken(t: string | null) {
+  overrideToken = t
+}
+
 function token(): string | null {
-  return process.env.BUFFER_ACCESS_TOKEN || null
+  return overrideToken || process.env.BUFFER_ACCESS_TOKEN || null
 }
 
 export function isConfigured(): boolean {

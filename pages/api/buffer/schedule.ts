@@ -1,11 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createUpdate, getProfiles, networkToService, entryToBufferUpdate } from '../../../lib/buffer'
+import { applyUserToken } from '../../../lib/buffer-auth'
 import type { CalendarEntry } from '../../../lib/calendar'
 
 export const config = { maxDuration: 60 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  applyUserToken(req)
 
   const { entries, profileIds: forcedProfileIds } = req.body
   if (!Array.isArray(entries)) return res.status(400).json({ error: 'entries must be an array' })

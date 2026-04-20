@@ -1,17 +1,23 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { isConfigured, getProfiles, getUser } from '../../../lib/buffer'
+import { applyUserToken } from '../../../lib/buffer-auth'
 
-// Simple in-memory cache (per Vercel function instance) — évite de spam Buffer à chaque page load
+// Cache keyed by token (so different users / different tokens get different caches)
 type CacheEntry = { data: any; expires: number }
-let cache: CacheEntry | null = null
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 min
+const cacheByToken: Map<string, CacheEntry> = new Map()
+const CACHE_TTL_MS = 5 * 60 * 1000
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  applyUserToken(req)
+
   if (!isConfigured()) {
     return res.status(200).json({ configured: false, connected: false })
   }
 
-  // Serve from cache if fresh
+  // Use the user token (if passed) as cache key, else env token
+  const headerToken = (req.headers['x-buffer-token'] as string) || 'env'
+  const cache = cacheByToken.get(headerToken)
+
   if (cache && cache.expires > Date.now() && !req.query.refresh) {
     return res.status(200).json({ ...cache.data, cached: true })
   }
@@ -33,16 +39,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         default: p.default,
       })),
     }
-    cache = { data, expires: Date.now() + CACHE_TTL_MS }
+    cacheByToken.set(headerToken, { data, expires: Date.now() + CACHE_TTL_MS })
     res.status(200).json(data)
   } catch (e: any) {
-    // Even errors are cached briefly to avoid re-hitting Buffer while rate-limited
     const errData = {
       configured: true,
       connected: false,
       error: e.message || 'Buffer connection failed',
     }
-    cache = { data: errData, expires: Date.now() + 60 * 1000 } // 1 min cache on error
+    cacheByToken.set(headerToken, { data: errData, expires: Date.now() + 60 * 1000 })
     res.status(200).json(errData)
   }
 }

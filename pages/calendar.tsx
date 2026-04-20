@@ -80,12 +80,38 @@ export default function CalendarPage() {
     } catch {}
   }
 
-  const fetchBufferStatus = async () => {
+  const fetchBufferStatus = async (forceRefresh = false) => {
     try {
-      const res = await fetch('/api/buffer/status')
+      const headers: Record<string, string> = {}
+      try {
+        const userToken = localStorage.getItem('buffer-user-token')
+        if (userToken) headers['x-buffer-token'] = userToken
+      } catch {}
+      const url = forceRefresh ? '/api/buffer/status?refresh=1' : '/api/buffer/status'
+      const res = await fetch(url, { headers })
       const data = await res.json()
       setBufferStatus(data)
     } catch {}
+  }
+
+  const [showTokenModal, setShowTokenModal] = useState(false)
+  const [newToken, setNewToken] = useState('')
+  const saveNewToken = () => {
+    const t = newToken.trim()
+    if (!t || t.length < 20) {
+      alert('Token trop court, vérifie bien que tu as tout copié')
+      return
+    }
+    localStorage.setItem('buffer-user-token', t)
+    setShowTokenModal(false)
+    setNewToken('')
+    setTimeout(() => fetchBufferStatus(true), 300)
+    setSyncMsg({ type: 'success', text: 'Token sauvegardé, test en cours…' })
+  }
+  const clearUserToken = () => {
+    localStorage.removeItem('buffer-user-token')
+    setShowTokenModal(false)
+    setTimeout(() => fetchBufferStatus(true), 300)
   }
 
   const sendToBuffer = async (which: 'all' | 'upcoming' = 'upcoming') => {
@@ -99,9 +125,14 @@ export default function CalendarPage() {
     setBufferSyncing(true)
     setSyncMsg(null)
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      try {
+        const userToken = localStorage.getItem('buffer-user-token')
+        if (userToken) headers['x-buffer-token'] = userToken
+      } catch {}
       const res = await fetch('/api/buffer/schedule', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ entries: toSend }),
       })
       const data = await res.json()
@@ -312,18 +343,17 @@ export default function CalendarPage() {
             </>
           ) : bufferStatus?.configured && !bufferStatus.connected ? (
             <>
-              <div className="gcal-info">
+              <div className="gcal-info" style={{ flexWrap: 'wrap' }}>
                 <span className="gcal-dot warning" />
                 <span className="gcal-text">
                   Buffer indisponible : {bufferStatus.error || 'erreur inconnue'}
-                  {bufferStatus.error?.toLowerCase().includes('too many') && (
-                    <> · Rate limit temporaire (5-15 min). Réessaye plus tard.</>
-                  )}
-                  {!bufferStatus.error?.toLowerCase().includes('too many') && (
-                    <> · <a href="https://publish.buffer.com/developers/api" target="_blank" rel="noreferrer" className="gcal-link">Régénère un token</a></>
-                  )}
                 </span>
-                <button onClick={fetchBufferStatus} className="gcal-btn" style={{ marginLeft: 'auto' }}>Réessayer</button>
+              </div>
+              <div className="gcal-actions">
+                <button onClick={() => setShowTokenModal(true)} className="gcal-btn primary">
+                  Mettre à jour le token
+                </button>
+                <button onClick={() => fetchBufferStatus(true)} className="gcal-btn">Réessayer</button>
               </div>
             </>
           ) : (
@@ -390,6 +420,42 @@ export default function CalendarPage() {
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}
           />
+        )}
+
+        {/* Buffer token modal */}
+        {showTokenModal && (
+          <div className="modal" onClick={() => setShowTokenModal(false)}>
+            <div className="token-modal" onClick={e => e.stopPropagation()}>
+              <h2>Mettre à jour le token Buffer</h2>
+              <p className="step">
+                <strong>1.</strong> Ouvre <a href="https://publish.buffer.com/developers/apps" target="_blank" rel="noreferrer" className="gcal-link">publish.buffer.com/developers/apps</a> (gratuit, pas besoin de plan payant)
+              </p>
+              <p className="step">
+                <strong>2.</strong> Clique <em>Create Token</em> (ou utilise une app existante). Le token commence par des lettres/chiffres sans tiret.
+              </p>
+              <p className="step">
+                <strong>3.</strong> Copie-le et colle-le ici :
+              </p>
+              <textarea
+                value={newToken}
+                onChange={e => setNewToken(e.target.value)}
+                placeholder="Colle ton token Buffer ici..."
+                rows={3}
+                className="token-input"
+                autoFocus
+              />
+              <div className="token-actions">
+                <button onClick={() => setShowTokenModal(false)} className="gcal-btn">Annuler</button>
+                <button onClick={clearUserToken} className="gcal-btn ghost">Utiliser le token Vercel</button>
+                <button onClick={saveNewToken} className="gcal-btn primary" disabled={!newToken.trim()}>
+                  Sauvegarder et tester
+                </button>
+              </div>
+              <p className="note">
+                Le token est stocké en local dans ton navigateur (pas partagé, pas envoyé sur notre serveur à part pour appeler Buffer).
+              </p>
+            </div>
+          </div>
         )}
 
         <style jsx>{`
@@ -505,6 +571,68 @@ export default function CalendarPage() {
             background: rgba(239, 68, 68, 0.08);
             border-color: rgba(239, 68, 68, 0.3);
             color: var(--danger);
+          }
+
+          /* === Token modal === */
+          :global(.token-modal) {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-xl);
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            animation: fade-in-strong var(--t-med) var(--ease);
+          }
+          :global(.token-modal h2) {
+            margin: 0 0 16px;
+            font-size: 18px;
+            font-weight: 700;
+          }
+          :global(.token-modal .step) {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 10px 0;
+            line-height: 1.6;
+          }
+          :global(.token-modal .step strong) {
+            color: var(--accent);
+            font-family: var(--mono);
+            margin-right: 6px;
+          }
+          :global(.token-modal em) {
+            color: var(--text);
+            font-style: normal;
+            font-family: var(--mono);
+            background: var(--bg-card);
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+          }
+          :global(.token-input) {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-md);
+            color: var(--text);
+            font-size: 13px;
+            padding: 12px;
+            font-family: var(--mono);
+            margin: 8px 0 14px;
+            resize: vertical;
+          }
+          :global(.token-actions) {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+          }
+          :global(.token-modal .note) {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            line-height: 1.5;
           }
 
           .toolbar {
