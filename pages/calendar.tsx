@@ -315,8 +315,15 @@ export default function CalendarPage() {
               <div className="gcal-info">
                 <span className="gcal-dot warning" />
                 <span className="gcal-text">
-                  Buffer : token invalide. <a href="https://publish.buffer.com/developers/api" target="_blank" rel="noreferrer" className="gcal-link">Régénère un token</a>
+                  Buffer indisponible : {bufferStatus.error || 'erreur inconnue'}
+                  {bufferStatus.error?.toLowerCase().includes('too many') && (
+                    <> · Rate limit temporaire (5-15 min). Réessaye plus tard.</>
+                  )}
+                  {!bufferStatus.error?.toLowerCase().includes('too many') && (
+                    <> · <a href="https://publish.buffer.com/developers/api" target="_blank" rel="noreferrer" className="gcal-link">Régénère un token</a></>
+                  )}
                 </span>
+                <button onClick={fetchBufferStatus} className="gcal-btn" style={{ marginLeft: 'auto' }}>Réessayer</button>
               </div>
             </>
           ) : (
