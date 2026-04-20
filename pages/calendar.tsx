@@ -6,6 +6,7 @@ import { useNetwork } from '../lib/network-context'
 import { CalendarEntry, getEntries, deleteEntry, updateEntry } from '../lib/calendar'
 
 type View = 'week' | 'month' | 'list'
+type GoogleStatus = { connected: boolean; configured: boolean; email: string | null }
 
 export default function CalendarPage() {
   const router = useRouter()
@@ -15,8 +16,89 @@ export default function CalendarPage() {
   const [anchorDate, setAnchorDate] = useState(new Date())
   const [selected, setSelected] = useState<CalendarEntry | null>(null)
   const [filterNetwork, setFilterNetwork] = useState<'all' | 'twitter' | 'linkedin'>('all')
+  const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  useEffect(() => { setEntries(getEntries()) }, [])
+  useEffect(() => {
+    setEntries(getEntries())
+    fetchGoogleStatus()
+    // Handle redirect from Google OAuth
+    if (router.query.google_connected === '1') {
+      setSyncMsg({ type: 'success', text: '✓ Google Calendar connecté !' })
+      router.replace('/calendar', undefined, { shallow: true })
+    } else if (router.query.google_error) {
+      setSyncMsg({ type: 'error', text: 'Erreur Google : ' + router.query.google_error })
+      router.replace('/calendar', undefined, { shallow: true })
+    }
+  }, [router.query.google_connected, router.query.google_error])
+
+  const fetchGoogleStatus = async () => {
+    try {
+      const res = await fetch('/api/google/status')
+      const data = await res.json()
+      setGoogleStatus(data)
+    } catch {}
+  }
+
+  const connectGoogle = () => {
+    window.location.href = '/api/google/auth'
+  }
+
+  const disconnectGoogle = async () => {
+    if (!confirm('Déconnecter Google Calendar ?')) return
+    await fetch('/api/google/disconnect', { method: 'POST' })
+    fetchGoogleStatus()
+    setSyncMsg({ type: 'success', text: 'Google Calendar déconnecté' })
+  }
+
+  const syncToGoogle = async (which: 'all' | 'upcoming' = 'upcoming') => {
+    const toSync = which === 'all'
+      ? entries
+      : entries.filter(e => new Date(e.scheduledAt).getTime() > Date.now())
+    if (toSync.length === 0) {
+      setSyncMsg({ type: 'error', text: 'Aucun post à syncer' })
+      return
+    }
+    setSyncing(true)
+    setSyncMsg(null)
+    try {
+      const res = await fetch('/api/google/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries: toSync }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSyncMsg({
+          type: 'success',
+          text: `✓ ${data.created}/${data.total} évènements créés sur Google Calendar`,
+        })
+      } else {
+        setSyncMsg({ type: 'error', text: data.message || data.error || 'Sync échouée' })
+      }
+    } catch (e: any) {
+      setSyncMsg({ type: 'error', text: 'Connexion impossible' })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const exportICS = async () => {
+    if (entries.length === 0) return
+    const res = await fetch('/api/google/export-ics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries }),
+    })
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'social-agent-calendar.ics'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const filtered = useMemo(() => {
     return filterNetwork === 'all' ? entries : entries.filter(e => e.network === filterNetwork)
@@ -53,6 +135,57 @@ export default function CalendarPage() {
     <>
       <Head><title>Calendrier — Social Agent</title></Head>
       <Layout title="Calendrier" subtitle={`${filtered.length} posts planifiés`}>
+        {/* Google Calendar bar */}
+        <div className="gcal-bar">
+          {googleStatus?.connected ? (
+            <>
+              <div className="gcal-info">
+                <span className="gcal-dot connected" />
+                <span className="gcal-text">
+                  Google Calendar connecté
+                  {googleStatus.email && <span className="gcal-email"> · {googleStatus.email}</span>}
+                </span>
+              </div>
+              <div className="gcal-actions">
+                <button onClick={() => syncToGoogle('upcoming')} disabled={syncing} className="gcal-btn primary">
+                  {syncing ? 'Sync…' : `Sync ${entries.filter(e => new Date(e.scheduledAt).getTime() > Date.now()).length} à venir`}
+                </button>
+                <button onClick={exportICS} className="gcal-btn">Export .ics</button>
+                <button onClick={disconnectGoogle} className="gcal-btn ghost">Déconnecter</button>
+              </div>
+            </>
+          ) : googleStatus?.configured ? (
+            <>
+              <div className="gcal-info">
+                <span className="gcal-dot" />
+                <span className="gcal-text">Google Calendar non connecté</span>
+              </div>
+              <div className="gcal-actions">
+                <button onClick={connectGoogle} className="gcal-btn primary">
+                  Connecter Google Calendar
+                </button>
+                <button onClick={exportICS} className="gcal-btn">Export .ics</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="gcal-info">
+                <span className="gcal-dot warning" />
+                <span className="gcal-text">
+                  Google OAuth pas configuré · <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="gcal-link">setup en 5 min</a>
+                </span>
+              </div>
+              <div className="gcal-actions">
+                <button onClick={exportICS} className="gcal-btn">Export .ics</button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {syncMsg && (
+          <div className={`sync-msg sync-${syncMsg.type}`}>{syncMsg.text}</div>
+        )}
+
         {/* Toolbar */}
         <div className="toolbar">
           <div className="nav-group">
@@ -104,6 +237,82 @@ export default function CalendarPage() {
         )}
 
         <style jsx>{`
+          /* === Google Calendar bar === */
+          .gcal-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--r-md);
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+          }
+          .gcal-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+          }
+          .gcal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-faint);
+            flex-shrink: 0;
+          }
+          .gcal-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
+          .gcal-dot.warning { background: var(--warning); }
+          .gcal-text { color: var(--text); font-weight: 500; }
+          .gcal-email {
+            color: var(--text-muted);
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 400;
+          }
+          .gcal-link { color: var(--accent); text-decoration: underline; }
+          .gcal-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+          .gcal-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 12px;
+            padding: 7px 14px;
+            border-radius: var(--r-sm);
+            font-weight: 500;
+          }
+          .gcal-btn:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
+          .gcal-btn.primary {
+            background: var(--accent);
+            color: var(--accent-text-on);
+            border-color: var(--accent);
+            font-weight: 600;
+          }
+          .gcal-btn.primary:hover:not(:disabled) { background: #fff; }
+          .gcal-btn.ghost { background: transparent; color: var(--text-muted); border-color: transparent; }
+          .gcal-btn.ghost:hover { color: var(--danger); }
+
+          .sync-msg {
+            padding: 10px 14px;
+            border-radius: var(--r-sm);
+            font-size: 12px;
+            margin-bottom: 12px;
+            border: 1px solid;
+          }
+          .sync-success {
+            background: rgba(74, 222, 128, 0.08);
+            border-color: rgba(74, 222, 128, 0.3);
+            color: var(--success);
+          }
+          .sync-error {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+          }
+
           .toolbar {
             display: flex;
             align-items: center;
@@ -459,6 +668,22 @@ function ListView({ entries, onSelect }: { entries: CalendarEntry[]; onSelect: (
   )
 }
 
+/* ============== HELPERS ============== */
+// Build a Google Calendar "Add event" URL with prefilled data (no OAuth needed)
+function addToGCalUrl(entry: CalendarEntry, durationMinutes = 30): string {
+  const start = new Date(entry.scheduledAt)
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const networkLabel = entry.network === 'twitter' ? 'Twitter / X' : 'LinkedIn'
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `[${networkLabel}] ${entry.topic || entry.text.slice(0, 60)}`,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details: entry.text,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
 /* ============== DETAIL MODAL ============== */
 function DetailModal({
   entry,
@@ -511,6 +736,7 @@ function DetailModal({
 
         <footer className="m-foot">
           <button onClick={copy} className="m-btn">Copier</button>
+          <a href={addToGCalUrl(entry)} target="_blank" rel="noreferrer" className="m-btn">+ Google Calendar</a>
           <button onClick={open} className="m-btn primary">Poster sur {entry.network === 'twitter' ? 'X' : 'LinkedIn'}</button>
           <button onClick={() => onDelete(entry.id)} className="m-btn danger">Supprimer</button>
         </footer>
@@ -565,7 +791,7 @@ function DetailModal({
         .m-status select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 5px 8px; border-radius: var(--r-sm); }
 
         .m-foot { display: flex; gap: 6px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
-        .m-btn { flex: 1; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; padding: 9px; border-radius: var(--r-sm); font-weight: 500; }
+        .m-btn { flex: 1; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; padding: 9px; border-radius: var(--r-sm); font-weight: 500; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
         .m-btn:hover { color: var(--text); border-color: var(--border-strong); }
         .m-btn.primary { background: var(--accent); color: var(--accent-text-on); border-color: var(--accent); font-weight: 600; }
         .m-btn.danger { color: var(--danger); border-color: rgba(239,68,68,.3); }
