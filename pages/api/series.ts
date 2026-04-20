@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+export const config = { maxDuration: 60 }
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 const SYSTEM = `Tu es le strategist en chef du lancement d'Axora — la marketplace francophone d'acquisition de business digitaux fondée par Marwane.

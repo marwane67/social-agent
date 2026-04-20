@@ -51,6 +51,170 @@ export default function AgentPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
+  // === CLIENT-SIDE TOOL EXECUTOR ===
+  // Each tool runs in the browser, calling the right API directly.
+  // This bypasses Vercel function timeouts on the agent endpoint.
+  const executeTool = async (name: string, args: any): Promise<{ success: boolean; summary: string; data?: any }> => {
+    try {
+      switch (name) {
+        case 'plan_calendar': {
+          // Cap at 14 days to stay under timeouts
+          const days = Math.min(Math.max(args.days || 7, 1), 14)
+          const startDate = args.start_date ? new Date(args.start_date) : new Date()
+
+          const body: any = {
+            duration: days,
+            network: args.network || network,
+            launchDate: startDate.toISOString().split('T')[0],
+            productPitch: args.theme,
+          }
+          try {
+            const vp = localStorage.getItem('voice-profile')
+            if (vp) body.voiceProfile = JSON.parse(vp)
+          } catch {}
+
+          const res = await fetch('/api/series', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+          const data = await res.json()
+          if (!data.posts) {
+            return { success: false, summary: data.error || 'Échec génération série' }
+          }
+
+          // Convert to calendar entries
+          const entries = data.posts.map((p: any, i: number) => {
+            const d = new Date(startDate)
+            d.setDate(d.getDate() + i)
+            d.setHours(10, 0, 0, 0)
+            return {
+              network: args.network || network,
+              format: p.type || 'storytelling',
+              topic: p.goal || p.phase,
+              text: p.text,
+              scheduledAt: d.toISOString(),
+              status: 'scheduled' as const,
+            }
+          })
+          saveBatch(entries)
+          return {
+            success: true,
+            summary: `${days} posts planifiés sur ${args.network || network} (thème: ${args.theme}). Ajoutés au calendrier à 10h.`,
+            data: { entries_count: entries.length },
+          }
+        }
+
+        case 'generate_post': {
+          const body: any = { input: args.topic, format: args.format, network: args.network }
+          try {
+            const vp = localStorage.getItem('voice-profile')
+            if (vp) body.voiceProfile = JSON.parse(vp)
+          } catch {}
+          const res = await fetch('/api/generate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+          const data = await res.json()
+          if (!data.posts?.length) return { success: false, summary: data.error || 'Échec génération' }
+          return {
+            success: true,
+            summary: `Post généré (${data.posts.length} variantes) — ${args.format} sur ${args.network}`,
+            data: { posts: data.posts },
+          }
+        }
+
+        case 'schedule_post': {
+          saveEntry({
+            network: args.network,
+            format: args.format || 'manual',
+            topic: args.topic || args.text.slice(0, 50),
+            text: args.text,
+            scheduledAt: new Date(args.scheduled_at).toISOString(),
+            status: 'scheduled',
+          })
+          return {
+            success: true,
+            summary: `Post programmé pour le ${new Date(args.scheduled_at).toLocaleString('fr-FR')}`,
+          }
+        }
+
+        case 'get_performance_summary': {
+          const insights = computeInsights(getPerformances())
+          if (insights.totalPosts === 0) {
+            return { success: true, summary: 'Aucun post tracké. Va dans /analytics pour ajouter des stats.' }
+          }
+          const parts = [
+            `${insights.totalPosts} posts trackés`,
+            `${insights.avgImpressions.toLocaleString()} vues/post en moyenne`,
+            `${insights.avgEngagementRate}% engagement`,
+            `tendance ${insights.trend === 'up' ? '↗' : insights.trend === 'down' ? '↘' : '→'}`,
+          ]
+          if (insights.topFormat) parts.push(`top format: ${insights.topFormat.format}`)
+          return { success: true, summary: parts.join(' · '), data: insights }
+        }
+
+        case 'suggest_hooks': {
+          const { HOOKS } = await import('../lib/hooks')
+          const filtered = args.category && args.category !== 'all'
+            ? HOOKS.filter(h => h.category === args.category)
+            : HOOKS
+          const sample = [...filtered].sort(() => Math.random() - 0.5).slice(0, 5)
+          return {
+            success: true,
+            summary: `5 hooks pour "${args.topic}" : ${sample.map(h => `"${h.text}"`).join(' · ')}`,
+            data: { hooks: sample },
+          }
+        }
+
+        case 'generate_brief': {
+          const res = await fetch('/api/brief', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context: args.context }),
+          })
+          const data = await res.json()
+          if (!data.headline) return { success: false, summary: 'Échec brief' }
+          return { success: true, summary: `Brief : ${data.headline}`, data }
+        }
+
+        case 'optimize_bio': {
+          const res = await fetch('/api/bio', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              network: args.network, currentBio: args.current_bio || '', goal: args.goal || '',
+            }),
+          })
+          const data = await res.json()
+          if (!data.variants) return { success: false, summary: 'Échec' }
+          return { success: true, summary: `${data.variants.length} variantes de bio générées`, data }
+        }
+
+        case 'sync_to_google_calendar': {
+          const which = args.which || 'upcoming'
+          // Get entries from localStorage (since agent's view is server-side)
+          const { getEntries } = await import('../lib/calendar')
+          const allEntries = getEntries()
+          const toSync = which === 'all'
+            ? allEntries
+            : allEntries.filter((e: any) => new Date(e.scheduledAt).getTime() > Date.now())
+          if (toSync.length === 0) return { success: false, summary: 'Aucun post à syncer' }
+          const res = await fetch('/api/google/sync', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries: toSync }),
+          })
+          const data = await res.json()
+          if (!res.ok) return { success: false, summary: data.message || 'Sync échouée — connecte Google Calendar d\'abord' }
+          return { success: true, summary: `${data.created}/${data.total} évènements synchronisés sur Google Calendar` }
+        }
+
+        default:
+          return { success: false, summary: `Outil inconnu : ${name}` }
+      }
+    } catch (e: any) {
+      return { success: false, summary: 'Erreur : ' + (e.message || 'inconnue') }
+    }
+  }
+
   const send = async (text: string) => {
     if (!text.trim() || loading) return
     const userMsg: Msg = {
@@ -64,7 +228,6 @@ export default function AgentPage() {
     setInput('')
     setLoading(true)
 
-    // Build clientState (current network, voice, perf insights)
     const clientState: any = { network }
     try {
       const vp = localStorage.getItem('voice-profile')
@@ -74,14 +237,13 @@ export default function AgentPage() {
       clientState.performanceInsights = computeInsights(getPerformances())
     } catch {}
 
-    // Abort controller pour gérer un timeout côté client (90s max)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 90_000)
+    const timeoutId = setTimeout(() => controller.abort(), 30_000)
 
     try {
-      // Format messages for OpenAI-compatible API (just role + content)
       const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }))
 
+      // 1. Quick call to agent → get text + tool_calls
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,48 +252,43 @@ export default function AgentPage() {
       })
       clearTimeout(timeoutId)
 
-      // Tenter de parser le JSON, fallback sur le texte brut
       let data: any
       const rawText = await res.text()
-      try {
-        data = JSON.parse(rawText)
-      } catch {
-        throw new Error(`Réponse non-JSON (HTTP ${res.status}) : ${rawText.slice(0, 200)}`)
-      }
+      try { data = JSON.parse(rawText) }
+      catch { throw new Error(`Réponse non-JSON (HTTP ${res.status})`) }
 
-      if (!res.ok) {
-        throw new Error(data.error || `Erreur HTTP ${res.status}`)
-      }
+      if (!res.ok) throw new Error(data.error || `Erreur HTTP ${res.status}`)
 
-      // Process actions client-side : save calendar entries to localStorage
-      if (data.actions && Array.isArray(data.actions)) {
-        for (const act of data.actions) {
-          if (act.tool === 'plan_calendar' && act.result?.entries) {
-            saveBatch(act.result.entries)
-          }
-          if (act.tool === 'schedule_post' && act.result?.entry) {
-            saveEntry(act.result.entry)
-          }
-        }
-      }
-
-      const assistantMsg: Msg = {
-        id: (Date.now() + 1).toString(),
+      // 2. Add the assistant message immediately (text only)
+      const assistantMsgId = (Date.now() + 1).toString()
+      const initialMsg: Msg = {
+        id: assistantMsgId,
         role: 'assistant',
-        content: data.message || data.error || 'Pas de réponse',
-        actions: data.actions,
+        content: data.message || (data.tool_calls?.length ? '' : 'Pas de réponse'),
+        actions: [],
         ts: Date.now(),
       }
-      setMessages([...newMsgs, assistantMsg])
+      setMessages([...newMsgs, initialMsg])
+
+      // 3. Execute tool calls in parallel (browser-side)
+      if (data.tool_calls?.length) {
+        const actions: Action[] = []
+        await Promise.all(
+          data.tool_calls.map(async (tc: any) => {
+            const result = await executeTool(tc.name, tc.args)
+            actions.push({ tool: tc.name, args: tc.args, result })
+          })
+        )
+        // Update message with actions
+        setMessages(curr => curr.map(m => m.id === assistantMsgId ? { ...m, actions } : m))
+      }
     } catch (e: any) {
       clearTimeout(timeoutId)
       const isAbort = e.name === 'AbortError'
       const errMsg: Msg = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: isAbort
-          ? '⚠️ Trop long (>90s). Demande plus simple ou réessaye.'
-          : '⚠️ Erreur : ' + (e.message || 'inconnue'),
+        content: isAbort ? '⚠️ Pulse n\'a pas répondu (timeout 30s). Réessaye.' : '⚠️ ' + (e.message || 'erreur'),
         ts: Date.now(),
       }
       setMessages([...newMsgs, errMsg])
@@ -492,20 +649,23 @@ function ActionRow({ action, onOpen }: { action: Action; onOpen: (href: string) 
     plan_calendar: 'Calendrier planifié',
     generate_post: 'Post généré',
     schedule_post: 'Post programmé',
-    get_performance_summary: 'Performance lue',
+    get_performance_summary: 'Performance',
     suggest_hooks: 'Hooks suggérés',
     generate_brief: 'Brief généré',
     optimize_bio: 'Bio optimisée',
+    sync_to_google_calendar: 'Sync Google Calendar',
   }
   const label = labels[action.tool] || action.tool
   const ok = action.result?.success !== false
   const summary = action.result?.summary || action.result?.message || ''
 
   // Quick links per action
-  const link = action.tool === 'plan_calendar' || action.tool === 'schedule_post' ? '/calendar' :
-               action.tool === 'generate_brief' ? '/brief' :
-               action.tool === 'get_performance_summary' ? '/analytics' :
-               action.tool === 'optimize_bio' ? '/bio' : ''
+  const link =
+    action.tool === 'plan_calendar' || action.tool === 'schedule_post' || action.tool === 'sync_to_google_calendar' ? '/calendar' :
+    action.tool === 'generate_brief' ? '/brief' :
+    action.tool === 'get_performance_summary' ? '/analytics' :
+    action.tool === 'optimize_bio' ? '/bio' :
+    action.tool === 'generate_post' ? '/' : ''
 
   return (
     <div className={`action ${ok ? 'ok' : 'fail'}`}>

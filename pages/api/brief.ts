@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+export const config = { maxDuration: 30 }
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 const SYSTEM = `Tu es le brief manager quotidien de Marwane, entrepreneur tech à Bruxelles (Axora marketplace + Pulsa Creatives agency IA).

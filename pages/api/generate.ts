@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { sampleHooks, hooksAsPromptBlock, HOOKS } from '../../lib/hooks'
 import { frameworkById } from '../../lib/frameworks'
 
+export const config = { maxDuration: 30 }
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 // Bloc hooks injecté dans chaque prompt — l'IA pioche dans cette liste pour ouvrir

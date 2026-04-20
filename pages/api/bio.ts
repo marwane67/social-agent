@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+export const config = { maxDuration: 30 }
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 const SYSTEM = `Tu es expert en optimisation de bio sur les réseaux sociaux. Tu sais ce qui convertit en 2026 :
