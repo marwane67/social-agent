@@ -19,19 +19,53 @@ export default function CalendarPage() {
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [autoSync, setAutoSync] = useState(false)
+  const [syncedIds, setSyncedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setEntries(getEntries())
     fetchGoogleStatus()
+    try {
+      setAutoSync(localStorage.getItem('gcal-autosync') === '1')
+      const synced = JSON.parse(localStorage.getItem('gcal-synced') || '[]')
+      setSyncedIds(new Set(synced))
+    } catch {}
     // Handle redirect from Google OAuth
     if (router.query.google_connected === '1') {
-      setSyncMsg({ type: 'success', text: '✓ Google Calendar connecté !' })
+      setSyncMsg({ type: 'success', text: '✓ Google Calendar connecté ! Active "Auto-sync" pour que les nouveaux posts apparaissent automatiquement.' })
       router.replace('/calendar', undefined, { shallow: true })
     } else if (router.query.google_error) {
       setSyncMsg({ type: 'error', text: 'Erreur Google : ' + router.query.google_error })
       router.replace('/calendar', undefined, { shallow: true })
     }
   }, [router.query.google_connected, router.query.google_error])
+
+  // Auto-sync : when entries change AND autoSync is on, push new ones to Google
+  useEffect(() => {
+    if (!autoSync || !googleStatus?.connected || entries.length === 0) return
+    const unsynced = entries.filter(e => !syncedIds.has(e.id) && new Date(e.scheduledAt).getTime() > Date.now() - 24 * 60 * 60 * 1000)
+    if (unsynced.length === 0) return
+
+    fetch('/api/google/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries: unsynced }),
+    }).then(r => r.json()).then(data => {
+      if (data.success && data.created > 0) {
+        const newSynced = new Set(syncedIds)
+        unsynced.forEach(e => newSynced.add(e.id))
+        setSyncedIds(newSynced)
+        try { localStorage.setItem('gcal-synced', JSON.stringify(Array.from(newSynced))) } catch {}
+        setSyncMsg({ type: 'success', text: `✓ Auto-sync : ${data.created} post(s) ajouté(s) à Google Calendar` })
+      }
+    }).catch(() => {})
+  }, [entries, autoSync, googleStatus?.connected])
+
+  const toggleAutoSync = () => {
+    const next = !autoSync
+    setAutoSync(next)
+    try { localStorage.setItem('gcal-autosync', next ? '1' : '0') } catch {}
+  }
 
   const fetchGoogleStatus = async () => {
     try {
@@ -57,7 +91,7 @@ export default function CalendarPage() {
       ? entries
       : entries.filter(e => new Date(e.scheduledAt).getTime() > Date.now())
     if (toSync.length === 0) {
-      setSyncMsg({ type: 'error', text: 'Aucun post à syncer' })
+      setSyncMsg({ type: 'error', text: 'Aucun post à syncer dans cette plage. Ajoute des posts d\'abord (via Pulse ou /series).' })
       return
     }
     setSyncing(true)
@@ -70,15 +104,22 @@ export default function CalendarPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setSyncMsg({
-          type: 'success',
-          text: `✓ ${data.created}/${data.total} évènements créés sur Google Calendar`,
-        })
+        if (data.created > 0) {
+          setSyncMsg({
+            type: 'success',
+            text: `✓ ${data.created}/${data.total} évènements créés. Vérifie sur calendar.google.com →`,
+          })
+        } else {
+          setSyncMsg({
+            type: 'error',
+            text: `Échec : 0 évènement créé (${data.failed} erreurs). ${data.details?.failed?.[0]?.error || ''}`,
+          })
+        }
       } else {
         setSyncMsg({ type: 'error', text: data.message || data.error || 'Sync échouée' })
       }
     } catch (e: any) {
-      setSyncMsg({ type: 'error', text: 'Connexion impossible' })
+      setSyncMsg({ type: 'error', text: 'Connexion impossible : ' + (e.message || 'erreur') })
     } finally {
       setSyncing(false)
     }
@@ -145,11 +186,22 @@ export default function CalendarPage() {
                   Google Calendar connecté
                   {googleStatus.email && <span className="gcal-email"> · {googleStatus.email}</span>}
                 </span>
+                <button onClick={toggleAutoSync} className={`autosync ${autoSync ? 'on' : ''}`} title="Sync automatique des nouveaux posts">
+                  <span className="autosync-dot" /> Auto-sync {autoSync ? 'ON' : 'OFF'}
+                </button>
               </div>
               <div className="gcal-actions">
-                <button onClick={() => syncToGoogle('upcoming')} disabled={syncing} className="gcal-btn primary">
+                <button onClick={() => syncToGoogle('upcoming')} disabled={syncing || entries.length === 0} className="gcal-btn primary">
                   {syncing ? 'Sync…' : `Sync ${entries.filter(e => new Date(e.scheduledAt).getTime() > Date.now()).length} à venir`}
                 </button>
+                {entries.length > 0 && (
+                  <button onClick={() => syncToGoogle('all')} disabled={syncing} className="gcal-btn">
+                    Tout syncer ({entries.length})
+                  </button>
+                )}
+                <a href="https://calendar.google.com" target="_blank" rel="noreferrer" className="gcal-btn">
+                  Voir GCal ↗
+                </a>
                 <button onClick={exportICS} className="gcal-btn">Export .ics</button>
                 <button onClick={disconnectGoogle} className="gcal-btn ghost">Déconnecter</button>
               </div>
@@ -274,6 +326,37 @@ export default function CalendarPage() {
             font-weight: 400;
           }
           .gcal-link { color: var(--accent); text-decoration: underline; }
+          .autosync {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-family: var(--mono);
+            font-weight: 600;
+            margin-left: 8px;
+          }
+          .autosync:hover { color: var(--text-secondary); border-color: var(--border-strong); }
+          .autosync.on {
+            background: rgba(74, 222, 128, 0.08);
+            border-color: rgba(74, 222, 128, 0.4);
+            color: var(--success);
+          }
+          .autosync-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-faint);
+          }
+          .autosync.on .autosync-dot {
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
+            animation: pulse-soft 2s ease-in-out infinite;
+          }
           .gcal-actions { display: flex; gap: 6px; flex-wrap: wrap; }
           .gcal-btn {
             background: var(--bg-card);
@@ -736,7 +819,9 @@ function DetailModal({
 
         <footer className="m-foot">
           <button onClick={copy} className="m-btn">Copier</button>
-          <a href={addToGCalUrl(entry)} target="_blank" rel="noreferrer" className="m-btn">+ Google Calendar</a>
+          <a href={addToGCalUrl(entry)} target="_blank" rel="noreferrer" className="m-btn" title="Ouvre Google Calendar avec l'event pré-rempli (1 clic)">
+            + Google Calendar
+          </a>
           <button onClick={open} className="m-btn primary">Poster sur {entry.network === 'twitter' ? 'X' : 'LinkedIn'}</button>
           <button onClick={() => onDelete(entry.id)} className="m-btn danger">Supprimer</button>
         </footer>
