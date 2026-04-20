@@ -26,8 +26,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const created: { entryId: string; bufferIds: string[] }[] = []
     const failed: { entryId: string; error: string }[] = []
+    const entriesList = entries as CalendarEntry[]
 
-    for (const entry of entries as CalendarEntry[]) {
+    for (let idx = 0; idx < entriesList.length; idx++) {
+      const entry = entriesList[idx]
       let pids: string[] = []
       if (profilesByService.__all__) {
         pids = profilesByService.__all__
@@ -47,6 +49,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         created.push({ entryId: entry.id, bufferIds: ids })
       } catch (e: any) {
         failed.push({ entryId: entry.id, error: e.message || 'unknown' })
+        // If rate-limited, stop the batch to avoid making it worse
+        if (e.message?.toLowerCase().includes('rate limit') || e.message?.toLowerCase().includes('too many')) {
+          break
+        }
+      }
+      // Throttle between entries : ~300ms × pids count already happens inside createUpdate
+      // Add an extra gap between DIFFERENT entries to stay well under Buffer's limit
+      if (idx < entriesList.length - 1) {
+        await new Promise(r => setTimeout(r, 200))
       }
     }
 

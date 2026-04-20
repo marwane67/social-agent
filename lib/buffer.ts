@@ -167,16 +167,27 @@ async function createSinglePost(
   throw new Error(`${result?.__typename || 'Erreur'} : ${result?.message || 'Buffer createPost échoué'}`)
 }
 
+// Throttle : Buffer rate-limits aggressively. 300ms between each call keeps us safe (3/sec).
+const THROTTLE_MS = 300
+
 export async function createUpdate(update: BufferUpdate): Promise<{ success: boolean; updates: { id: string }[] }> {
   const created: { id: string }[] = []
   const errors: string[] = []
-  // One post per channel (Buffer schema requires single channelId)
-  for (const cid of update.profile_ids) {
+  for (let i = 0; i < update.profile_ids.length; i++) {
+    const cid = update.profile_ids[i]
     try {
       const r = await createSinglePost(cid, update.text, update.scheduled_at, update.now)
       created.push(r)
     } catch (e: any) {
       errors.push(`${cid}: ${e.message || 'unknown'}`)
+      // If rate-limited, stop immediately — no point continuing
+      if (e.message?.toLowerCase().includes('too many')) {
+        throw new Error('Rate limited par Buffer. Attends 5-15 min ou régénère un token.')
+      }
+    }
+    // Throttle between channels
+    if (i < update.profile_ids.length - 1) {
+      await new Promise(r => setTimeout(r, THROTTLE_MS))
     }
   }
   if (created.length === 0 && errors.length > 0) {
