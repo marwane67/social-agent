@@ -58,49 +58,76 @@ export default function AgentPage() {
     try {
       switch (name) {
         case 'plan_calendar': {
-          // Cap at 14 days to stay under timeouts
+          // Cap at 14 days. We generate posts in PARALLEL (one /api/generate per day)
+          // instead of one heavy /api/series call. Much faster + no timeout.
           const days = Math.min(Math.max(args.days || 7, 1), 14)
           const startDate = args.start_date ? new Date(args.start_date) : new Date()
+          const net = args.network || network
+          const theme = args.theme
 
-          const body: any = {
-            duration: days,
-            network: args.network || network,
-            launchDate: startDate.toISOString().split('T')[0],
-            productPitch: args.theme,
-          }
+          let voiceProfile: any = null
           try {
             const vp = localStorage.getItem('voice-profile')
-            if (vp) body.voiceProfile = JSON.parse(vp)
+            if (vp) voiceProfile = JSON.parse(vp)
           } catch {}
 
-          const res = await fetch('/api/series', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
+          // Format rotation to vary content types across the week
+          const formatPool = net === 'twitter'
+            ? ['raw_build', 'hot_take', 'storytelling', 'one_liner', 'behind_scenes', 'ai_authority', 'axora_hype']
+            : ['storytelling_li', 'transparency', 'thought_leadership', 'value_bomb', 'personal_brand', 'debate_li', 'axora_linkedin']
+
+          // Generate N posts in parallel
+          const requests = Array.from({ length: days }, (_, i) => {
+            const format = formatPool[i % formatPool.length]
+            const dayContext =
+              i === 0 ? 'Premier post de la série : pose le contexte et le problème.' :
+              i === days - 1 ? 'Dernier post de la série : conclusion ou call to action.' :
+              `Post ${i + 1}/${days} : fais avancer la narration.`
+            return fetch('/api/generate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                input: `Série sur "${theme}". ${dayContext}`,
+                format,
+                network: net,
+                voiceProfile,
+              }),
+            })
+              .then(r => r.json())
+              .then(data => {
+                const post = data.posts?.[0]
+                if (!post) return null
+                return { day: i, format, type: post.type, text: post.text }
+              })
+              .catch(() => null)
           })
-          const data = await res.json()
-          if (!data.posts) {
-            return { success: false, summary: data.error || 'Échec génération série' }
+
+          const results = await Promise.all(requests)
+          const validResults = results.filter((r): r is { day: number; format: string; type: string; text: string } => !!r)
+
+          if (validResults.length === 0) {
+            return { success: false, summary: 'Échec génération — réessaye avec moins de jours ou un thème plus simple' }
           }
 
-          // Convert to calendar entries
-          const entries = data.posts.map((p: any, i: number) => {
+          // Build calendar entries
+          const entries = validResults.map(r => {
             const d = new Date(startDate)
-            d.setDate(d.getDate() + i)
+            d.setDate(d.getDate() + r.day)
             d.setHours(10, 0, 0, 0)
             return {
-              network: args.network || network,
-              format: p.type || 'storytelling',
-              topic: p.goal || p.phase,
-              text: p.text,
+              network: net as 'twitter' | 'linkedin',
+              format: r.format,
+              topic: r.type,
+              text: r.text,
               scheduledAt: d.toISOString(),
               status: 'scheduled' as const,
             }
           })
           saveBatch(entries)
+
           return {
             success: true,
-            summary: `${days} posts planifiés sur ${args.network || network} (thème: ${args.theme}). Ajoutés au calendrier à 10h.`,
+            summary: `${validResults.length}/${days} posts planifiés sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'} (${theme}). Ajoutés au calendrier à 10h chaque jour.`,
             data: { entries_count: entries.length },
           }
         }
