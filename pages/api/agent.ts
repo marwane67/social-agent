@@ -30,21 +30,28 @@ RÈGLES DE ROUTING (CRITIQUE) :
   * "Pulsa" → Marwane LinkedIn uniquement (PAS axora-app, PAS mrwn_one)
   * "Personal" → Marwane LinkedIn + mrwn_one Twitter
 - Quand l'utilisateur dit "building in public Axora", utilise l'axe axora_launch
-- Quand il dit "vendre Pulsa" ou "offre Pulsa", utilise l'axe pulsa_offer`
+- Quand il dit "vendre Pulsa" ou "offre Pulsa", utilise l'axe pulsa_offer
+
+RÈGLES IMAGES :
+- Si l'utilisateur dit "avec images", "avec photos", "+ images", "avec visuel" → passe with_images: true aux plan_calendar / plan_by_axis / generate_post
+- Les images sont générées en parallèle (ne ralentit pas beaucoup, ~15s de plus)
+- Si des posts existent déjà sans image, propose generate_images_for_calendar pour rattraper
+- Par défaut (sans mention), ne génère PAS d'images (économise coût API)`
 
 const TOOLS = [
   {
     type: 'function',
     function: {
       name: 'plan_calendar',
-      description: "Planifie un calendrier de contenu sur N jours (1-14). Génère N posts (un par jour) avec sujets variés. Le client va appeler /api/series pour créer les posts et les ajouter au calendrier.",
+      description: "Planifie un calendrier de contenu sur N jours (1-14). Génère N posts variés (texte + optionnellement images) et les ajoute au calendrier.",
       parameters: {
         type: 'object',
         properties: {
-          days: { type: 'number', description: 'Nombre de jours à planifier (1-14, max 14 pour éviter timeouts)' },
+          days: { type: 'number', description: 'Nombre de jours à planifier (1-14)' },
           network: { type: 'string', enum: ['twitter', 'linkedin'], description: 'Réseau cible' },
           theme: { type: 'string', description: "Thème global de la planification" },
           start_date: { type: 'string', description: 'Date de départ ISO (YYYY-MM-DD), defaults to today' },
+          with_images: { type: 'boolean', description: "Si true, génère aussi une image pour chaque post (en parallèle). Augmente le temps de ~15s. Default: false." },
         },
         required: ['days', 'network', 'theme'],
       },
@@ -54,13 +61,14 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'generate_post',
-      description: "Génère un post unique avec un format et un sujet précis.",
+      description: "Génère un post unique avec format + sujet + optionnellement une image.",
       parameters: {
         type: 'object',
         properties: {
           topic: { type: 'string' },
           format: { type: 'string', description: 'ex: raw_build, hot_take, storytelling, transparency, value_bomb' },
           network: { type: 'string', enum: ['twitter', 'linkedin'] },
+          with_image: { type: 'boolean', description: "Si true, génère aussi une image. Default: false." },
         },
         required: ['topic', 'format', 'network'],
       },
@@ -169,15 +177,31 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'plan_by_axis',
-      description: "Planifie un calendrier de N posts pour un AXE stratégique spécifique du brain (ex: axora_launch, pulsa_offer, personal_thought_leadership). Les channels cibles sont déterminés automatiquement selon le brain.",
+      description: "Planifie un calendrier de N posts pour un AXE stratégique du brain. Routes auto vers les bons channels Buffer.",
       parameters: {
         type: 'object',
         properties: {
           axisId: { type: 'string', description: 'ID de l\'axe dans le brain' },
           days: { type: 'number', description: '1-14 jours' },
           start_date: { type: 'string', description: 'YYYY-MM-DD, défaut = aujourd\'hui' },
+          with_images: { type: 'boolean', description: 'Si true, génère aussi les images. Default: false.' },
         },
         required: ['axisId', 'days'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_images_for_calendar',
+      description: "Génère des images pour les posts DÉJÀ planifiés dans le calendrier qui n'en ont pas encore. Utile pour rattraper une planif faite sans images.",
+      parameters: {
+        type: 'object',
+        properties: {
+          which: { type: 'string', enum: ['upcoming', 'all', 'without_image'], description: 'upcoming = à venir sans image, all = tous sans image, without_image = synonyme' },
+          limit: { type: 'number', description: 'Max images à générer (défaut 10)' },
+        },
+        required: [],
       },
     },
   },

@@ -592,7 +592,8 @@ function WeekView({ anchorDate, entries, onSelect }: { anchorDate: Date; entries
               {dayEntries.length === 0 && <div className="day-empty">—</div>}
               {dayEntries.map(e => (
                 <button key={e.id} onClick={() => onSelect(e)} className={`entry entry-${e.network} entry-${e.status}`}>
-                  <div className="e-time">{new Date(e.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+                  {e.imageUrl && <img src={e.imageUrl} alt="" className="e-img" />}
+                  <div className="e-time">{new Date(e.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.imageUrl && ' 🖼'}</div>
                   <div className="e-text">{e.text.slice(0, 60)}{e.text.length > 60 ? '…' : ''}</div>
                 </button>
               ))}
@@ -657,6 +658,15 @@ function WeekView({ anchorDate, entries, onSelect }: { anchorDate: Date; entries
           color: var(--text);
           cursor: pointer;
           transition: all var(--t-fast) var(--ease);
+          overflow: hidden;
+        }
+        .e-img {
+          display: block;
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          object-fit: cover;
+          border-radius: 4px;
+          margin-bottom: 6px;
         }
         .entry:hover { background: var(--bg-card-hover); transform: translateX(1px); }
         .entry-twitter { border-left-color: var(--text); }
@@ -883,8 +893,25 @@ function DetailModal({
   onDelete: (id: string) => void
   onStatusChange: (id: string, status: CalendarEntry['status']) => void
 }) {
+  const [genImg, setGenImg] = useState(false)
+  const [localImg, setLocalImg] = useState(entry.imageUrl)
   const copy = () => {
     navigator.clipboard.writeText(entry.text)
+  }
+  const generateImage = async () => {
+    setGenImg(true)
+    try {
+      const res = await fetch('/api/post-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postText: entry.text, style: 'modern' }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        const { updateEntry } = await import('../lib/calendar')
+        updateEntry(entry.id, { imageUrl: data.url })
+        setLocalImg(data.url)
+      }
+    } catch {} finally { setGenImg(false) }
   }
   const open = () => {
     const text = encodeURIComponent(entry.text)
@@ -909,7 +936,18 @@ function DetailModal({
 
         <div className="m-text">{entry.text}</div>
 
-        {entry.imageUrl && <img src={entry.imageUrl} alt="" className="m-img" />}
+        {localImg ? (
+          <div className="m-img-wrap">
+            <img src={localImg} alt="" className="m-img" />
+            <button onClick={generateImage} disabled={genImg} className="m-regen">
+              {genImg ? 'Génération…' : '↻ Régénérer'}
+            </button>
+          </div>
+        ) : (
+          <button onClick={generateImage} disabled={genImg} className="m-genimg">
+            {genImg ? 'Génération en cours (~10s)…' : '🎨 Générer une image pour ce post'}
+          </button>
+        )}
 
         <div className="m-status">
           <label>Statut :</label>
@@ -984,7 +1022,13 @@ function DetailModal({
           background: var(--bg);
           border-radius: var(--r-md);
         }
-        .m-img { width: 100%; border-radius: var(--r-md); margin-top: 12px; }
+        .m-img { width: 100%; border-radius: var(--r-md); margin-top: 12px; display: block; }
+        .m-img-wrap { position: relative; margin-top: 12px; }
+        .m-regen { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #fff; border: none; padding: 5px 10px; border-radius: var(--r-sm); font-size: 11px; font-family: var(--mono); cursor: pointer; backdrop-filter: blur(8px); }
+        .m-regen:hover:not(:disabled) { background: rgba(0,0,0,0.9); }
+        .m-genimg { width: 100%; background: var(--bg-card); border: 1px dashed var(--border-strong); color: var(--text-secondary); padding: 16px; border-radius: var(--r-md); font-size: 13px; margin-top: 12px; cursor: pointer; transition: all var(--t-fast) var(--ease); }
+        .m-genimg:hover:not(:disabled) { color: var(--text); border-color: var(--net); background: var(--net-soft); }
+        .m-genimg:disabled { opacity: 0.6; cursor: wait; }
 
         .m-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px; background: var(--bg-card); border-radius: var(--r-sm); }
         .m-status label { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }

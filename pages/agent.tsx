@@ -17,12 +17,12 @@ type Msg = {
 }
 
 const SUGGESTIONS = [
-  { label: 'Planifie ma semaine', prompt: 'Planifie-moi 7 posts pour la semaine prochaine sur Twitter, thème building Axora' },
-  { label: '30 jours de lancement', prompt: 'Génère un calendrier de 30 jours pour le lancement d\'Axora sur LinkedIn' },
+  { label: 'Ma semaine + images', prompt: 'Planifie-moi 7 posts pour la semaine prochaine sur LinkedIn, thème building Axora, AVEC images générées' },
+  { label: 'Axora launch (14j)', prompt: 'Planifie 14 jours de posts pour l\'axe axora_launch avec images' },
+  { label: 'Images pour existants', prompt: 'Génère des images pour tous mes posts planifiés qui n\'en ont pas encore' },
   { label: 'Brief du jour', prompt: 'Donne-moi le brief du jour avec 5 idées de posts' },
   { label: 'Mes performances', prompt: 'Analyse mes performances et dis-moi ce qui marche le mieux' },
   { label: 'Optimise ma bio', prompt: 'Génère 5 variantes optimisées de ma bio LinkedIn' },
-  { label: 'Suggère des hooks', prompt: 'Donne-moi 5 hooks viraux sur le thème de l\'IA pour entrepreneurs' },
 ]
 
 type Resources = {
@@ -169,6 +169,22 @@ export default function AgentPage() {
             return { success: false, summary: 'Échec génération — réessaye avec moins de jours ou un thème plus simple' }
           }
 
+          // === Optional : generate images in parallel for each post ===
+          let imageUrls: Record<number, string> = {}
+          if (args.with_images) {
+            const imgRequests = validResults.map(r =>
+              fetch('/api/post-image', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postText: r.text, style: 'modern' }),
+              })
+                .then(res => res.json())
+                .then(d => ({ day: r.day, url: d.url || null }))
+                .catch(() => ({ day: r.day, url: null }))
+            )
+            const imgResults = await Promise.all(imgRequests)
+            imgResults.forEach(i => { if (i.url) imageUrls[i.day] = i.url })
+          }
+
           const entries = validResults.map(r => {
             const d = new Date(startDate)
             d.setDate(d.getDate() + r.day)
@@ -182,29 +198,31 @@ export default function AgentPage() {
               status: 'scheduled' as const,
               hookId: r.hookId,
               framework: r.framework,
+              imageUrl: imageUrls[r.day],
             }
           })
           saveBatch(entries)
 
+          const imgCount = Object.keys(imageUrls).length
           const resourcesUsed = [
             `${days} hooks rotation`,
             net === 'linkedin' ? `${liFrameworks.length} frameworks rotation` : '',
             voiceProfile ? 'voice profile' : '',
             perfBlock ? 'top perfs' : '',
             recentEntries.length > 0 ? 'dedup calendrier' : '',
+            args.with_images ? `${imgCount}/${validResults.length} images générées` : '',
           ].filter(Boolean).join(' · ')
 
           return {
             success: true,
-            summary: `${validResults.length}/${days} posts planifiés sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'}. Ressources : ${resourcesUsed}`,
-            data: { entries_count: entries.length },
+            summary: `${validResults.length}/${days} posts planifiés sur ${net === 'twitter' ? 'Twitter' : 'LinkedIn'}. ${resourcesUsed}`,
+            data: { entries_count: entries.length, images: imgCount },
           }
         }
 
         case 'generate_post': {
-          // Pulse pioche AUTO une combo hook+framework cohérente
-          const { HOOKS, sampleHooks } = await import('../lib/hooks')
-          const { FRAMEWORKS, frameworksFor } = await import('../lib/frameworks')
+          const { sampleHooks } = await import('../lib/hooks')
+          const { frameworksFor } = await import('../lib/frameworks')
 
           const body: any = { input: args.topic, format: args.format, network: args.network }
           try {
@@ -217,11 +235,9 @@ export default function AgentPage() {
             if (insights.totalPosts >= 5) body.performanceInsights = insightsAsPromptBlock(insights)
           } catch {}
 
-          // Auto-pick hook (random from library)
           const pickedHook = sampleHooks(1)[0]
           if (pickedHook) body.hookId = pickedHook.id
 
-          // Auto-pick framework for LinkedIn (long form benefits from structure)
           if (args.network === 'linkedin') {
             const liFrameworks = frameworksFor('linkedin')
             const pickedFw = liFrameworks[Math.floor(Math.random() * liFrameworks.length)]
@@ -234,12 +250,28 @@ export default function AgentPage() {
           })
           const data = await res.json()
           if (!data.posts?.length) return { success: false, summary: data.error || 'Échec génération' }
-          const usedHook = pickedHook ? `Hook #${pickedHook.id} "${pickedHook.text.slice(0, 35)}..."` : ''
-          const usedFw = body.framework ? ` + framework ${body.framework}` : ''
+          const firstPost = data.posts[0]
+
+          // Optionally generate image for first variant in parallel
+          let imageUrl: string | null = null
+          if (args.with_image && firstPost?.text) {
+            try {
+              const imgRes = await fetch('/api/post-image', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postText: firstPost.text, style: 'modern' }),
+              })
+              const imgData = await imgRes.json()
+              if (imgData.url) imageUrl = imgData.url
+            } catch {}
+          }
+
+          const usedHook = pickedHook ? `Hook #${pickedHook.id}` : ''
+          const usedFw = body.framework ? ` + ${body.framework}` : ''
+          const imgMark = imageUrl ? ' + image générée ✓' : ''
           return {
             success: true,
-            summary: `${data.posts.length} variantes générées · ${usedHook}${usedFw}`,
-            data: { posts: data.posts, hook: pickedHook, framework: body.framework },
+            summary: `${data.posts.length} variantes · ${usedHook}${usedFw}${imgMark}`,
+            data: { posts: data.posts, hook: pickedHook, framework: body.framework, imageUrl },
           }
         }
 
@@ -371,6 +403,47 @@ export default function AgentPage() {
           return { success: true, summary: `${data.created}/${data.total} posts envoyés dans Buffer${routing}` }
         }
 
+        case 'generate_images_for_calendar': {
+          const limit = Math.min(args.limit || 10, 20)
+          const which = args.which || 'upcoming'
+          const { getEntries, updateEntry } = await import('../lib/calendar')
+          const entries = getEntries()
+
+          // Filter : posts without image
+          let target = entries.filter((e: any) => !e.imageUrl)
+          if (which === 'upcoming') {
+            target = target.filter((e: any) => new Date(e.scheduledAt).getTime() > Date.now())
+          }
+          target = target.slice(0, limit)
+
+          if (target.length === 0) {
+            return { success: true, summary: 'Tous les posts ont déjà une image ✓' }
+          }
+
+          // Parallel generation
+          const imgResults = await Promise.all(
+            target.map(async (e: any) => {
+              try {
+                const res = await fetch('/api/post-image', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ postText: e.text, style: 'modern' }),
+                })
+                const data = await res.json()
+                if (data.url) {
+                  updateEntry(e.id, { imageUrl: data.url })
+                  return { id: e.id, ok: true }
+                }
+              } catch {}
+              return { id: e.id, ok: false }
+            })
+          )
+          const ok = imgResults.filter(r => r.ok).length
+          return {
+            success: true,
+            summary: `${ok}/${target.length} images générées pour posts existants`,
+          }
+        }
+
         case 'plan_by_axis': {
           const { getBrain } = await import('../lib/brain')
           const brain = getBrain()
@@ -436,6 +509,22 @@ export default function AgentPage() {
           const results = (await Promise.all(requests)).filter((r): r is NonNullable<typeof r> => r !== null)
           if (results.length === 0) return { success: false, summary: 'Échec génération — réessaye plus tard' }
 
+          // Optional parallel image generation
+          let imageUrls: Record<number, string> = {}
+          if (args.with_images) {
+            const imgRequests = results.map(r =>
+              fetch('/api/post-image', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postText: r.text, style: 'modern' }),
+              })
+                .then(res => res.json())
+                .then(d => ({ day: r.day, url: d.url || null }))
+                .catch(() => ({ day: r.day, url: null }))
+            )
+            const imgResults = await Promise.all(imgRequests)
+            imgResults.forEach(i => { if (i.url) imageUrls[i.day] = i.url })
+          }
+
           const entries = results.map(r => {
             const d = new Date(startDate)
             d.setDate(d.getDate() + r.day)
@@ -449,20 +538,23 @@ export default function AgentPage() {
               status: 'scheduled' as const,
               hookId: r.hookId,
               framework: r.framework,
+              imageUrl: imageUrls[r.day],
             }
           })
           saveBatch(entries)
 
+          const imgCount = Object.keys(imageUrls).length
           const resources = [
             `${days} hooks`,
             net === 'linkedin' ? `${liFrameworks.length} frameworks` : '',
             voiceProfile ? 'voice' : '',
             perfBlock ? 'top perfs' : '',
+            args.with_images ? `${imgCount} images` : '',
           ].filter(Boolean).join(' + ')
 
           return {
             success: true,
-            summary: `${results.length}/${days} posts pour l'axe "${axis.name}" (${net}) · Ressources : ${resources}. Router Buffer avec axisId="${axis.id}".`,
+            summary: `${results.length}/${days} posts pour "${axis.name}" (${net}) · ${resources}. Router Buffer avec axisId="${axis.id}".`,
           }
         }
 
@@ -972,6 +1064,7 @@ function ActionRow({ action, onOpen }: { action: Action; onOpen: (href: string) 
     sync_to_google_calendar: 'Sync Google Calendar',
     send_to_buffer: 'Envoi Buffer',
     plan_by_axis: 'Calendrier par axe',
+    generate_images_for_calendar: 'Images pour calendrier',
   }
   const label = labels[action.tool] || action.tool
   const ok = action.result?.success !== false
