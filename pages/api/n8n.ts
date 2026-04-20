@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le stratège social media d'Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles.
+const SYSTEM = `Tu es le stratège social media de Marwane (@ismaa_pxl), entrepreneur tech à Bruxelles.
 Projets : Axora (marketplace acquisition business digitaux francophone), Pulsa Creatives (agence IA Bruxelles).
 Style : direct, cash, authentique, mélange FR/EN naturel, zéro bullshit, 0-1 emoji max.`
 
@@ -20,7 +20,7 @@ const FORMATS_PROMPTS: Record<string, string> = {
   raw_build: 'un post "building in public" authentique et brut',
   hot_take: 'une opinion tranchée et controversée mais intelligente',
   behind_scenes: 'un post "behind the scenes" montrant les coulisses',
-  ai_authority: 'un post positionnant Ismaa comme référence IA',
+  ai_authority: 'un post positionnant Marwane comme référence IA',
   storytelling: 'une micro-story percutante avec tension → résolution',
   one_liner: 'un one-liner screenshot-worthy, UNE seule phrase',
   axora_hype: "un post créant de l'engouement autour d'Axora",

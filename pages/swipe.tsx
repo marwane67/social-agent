@@ -34,7 +34,7 @@ export default function SwipePage() {
 
   return (
     <>
-      <Head><title>Swipe File — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Swipe File — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Swipe File" subtitle={`${filtered.length} posts sauvegardés pour inspiration`}>
         <div className="pc">
           <div className="top-row">

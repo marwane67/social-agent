@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le rédacteur en chef de la newsletter d'Ismaa, "Build in Public" — une newsletter hebdo où il partage ses meilleures idées, leçons et coulisses de Axora + Pulsa.
+const SYSTEM = `Tu es le rédacteur en chef de la newsletter de Marwane, "Build in Public" — une newsletter hebdo où il partage ses meilleures idées, leçons et coulisses de Axora + Pulsa.
 
 Style :
 - Direct, personnel, comme un email d'un pote entrepreneur
 - Pas de "Bonjour cher lecteur" formel
 - Format clair avec sections distinctes
 - 5-8 minutes de lecture
-- Ton authentique d'Ismaa`
+- Ton authentique de Marwane`
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const postsBlock = posts.map((p: any, i: number) => `[${i + 1}] ${p.text || p}`).join('\n\n')
 
-  const prompt = `Voici les meilleurs posts d'Ismaa de la semaine :
+  const prompt = `Voici les meilleurs posts de Marwane de la semaine :
 
 ${postsBlock}
 
@@ -37,7 +37,7 @@ Génère une NEWSLETTER hebdomadaire complète au format JSON :
 {
   "subject": "Titre catchy (sous 60 chars)",
   "preheader": "Preview text (sous 100 chars)",
-  "intro": "Intro perso d'Ismaa (3-5 lignes, mood de la semaine)",
+  "intro": "Intro perso de Marwane (3-5 lignes, mood de la semaine)",
   "sections": [
     {
       "title": "Titre de section (ex: 'La leçon de la semaine', 'Behind the build', 'Ce que j'ai appris')",

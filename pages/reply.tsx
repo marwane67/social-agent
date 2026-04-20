@@ -49,7 +49,7 @@ export default function ReplyPage() {
 
   return (
     <>
-      <Head><title>Reply Agent — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Reply Agent — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Reply Agent" subtitle="Réponses stratégiques aux commentaires">
         <div className="page-content">
           <div className="section">

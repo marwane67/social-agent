@@ -1,4 +1,4 @@
-# Social Agent — Ismaa / Pixel Company
+# Social Agent — Marwane / Pixel Company
 
 Agent IA pour générer des posts Twitter/X et LinkedIn. Built in public, Axora, Pulsa Creatives.
 

@@ -139,7 +139,7 @@ export default function ToolsPage() {
 
   return (
     <>
-      <Head><title>Tools — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Tools — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Tools" subtitle="Outils de contenu avancés">
         <div className="page-content">
           <div className="section">

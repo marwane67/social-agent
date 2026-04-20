@@ -80,7 +80,7 @@ export default function OutreachPage() {
 
   return (
     <>
-      <Head><title>Outreach — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Outreach — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="LinkedIn Outreach" subtitle="Colle un profil, choisis le type, c'est envoyé">
         <div className="pc">
           {/* Step 1: LinkedIn URL */}
@@ -175,7 +175,7 @@ export default function OutreachPage() {
                     <div className="msg-preview-header">
                       <div className="msg-avatar">I</div>
                       <div>
-                        <div className="msg-from">Ismaa</div>
+                        <div className="msg-from">Marwane</div>
                         <div className="msg-to">{name ? `→ ${name}` : 'Message LinkedIn'}</div>
                       </div>
                     </div>

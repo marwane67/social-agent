@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le brief manager quotidien d'Ismaa, entrepreneur tech à Bruxelles (Axora marketplace + Pulsa Creatives agency IA).
+const SYSTEM = `Tu es le brief manager quotidien de Marwane, entrepreneur tech à Bruxelles (Axora marketplace + Pulsa Creatives agency IA).
 
 Chaque matin, tu lui prépares un BRIEF court et actionnable pour qu'il sache exactement quoi poster aujourd'hui.
 
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let voiceBlock = ''
   if (voiceProfile && typeof voiceProfile === 'object') {
-    voiceBlock = `\n\nProfil de voix d'Ismaa :\n- Ton : ${voiceProfile.toneOfVoice}\n- Signature : ${voiceProfile.signature}\n- Thèmes : ${(voiceProfile.topicsRecurring || []).join(', ')}`
+    voiceBlock = `\n\nProfil de voix de Marwane :\n- Ton : ${voiceProfile.toneOfVoice}\n- Signature : ${voiceProfile.signature}\n- Thèmes : ${(voiceProfile.topicsRecurring || []).join(', ')}`
   }
 
   let scheduledBlock = ''
@@ -36,12 +36,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let contextBlock = ''
   if (context) {
-    contextBlock = `\n\nContexte semaine d'Ismaa : ${context}`
+    contextBlock = `\n\nContexte semaine de Marwane : ${context}`
   }
 
   const prompt = `Date : ${today}${voiceBlock}${scheduledBlock}${contextBlock}
 
-Génère le BRIEF QUOTIDIEN d'Ismaa au format JSON strict :
+Génère le BRIEF QUOTIDIEN de Marwane au format JSON strict :
 
 {
   "headline": "1 phrase d'accroche pour la journée (mood/focus du jour)",
@@ -50,7 +50,7 @@ Génère le BRIEF QUOTIDIEN d'Ismaa au format JSON strict :
     { ... 5 idées au total }
   ],
   "trends": [
-    { "topic": "tendance IA actuelle", "angle": "comment Ismaa peut la surfer aujourd'hui" },
+    { "topic": "tendance IA actuelle", "angle": "comment Marwane peut la surfer aujourd'hui" },
     { ... 3 tendances }
   ],
   "viral_angle": {

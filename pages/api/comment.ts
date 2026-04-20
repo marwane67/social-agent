@@ -2,16 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le stratège growth d'Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles.
+const SYSTEM = `Tu es le stratège growth de Marwane (@ismaa_pxl), entrepreneur tech à Bruxelles.
 Ton objectif : générer des commentaires intelligents à poster sur les posts d'autres personnes pour gagner en visibilité.
 
 Règles :
 - Le commentaire doit apporter de la VALEUR (insight, expérience, angle différent)
 - JAMAIS de "Super post !" ou "Merci pour le partage !" — c'est invisible
-- Le commentaire doit donner envie de visiter le profil d'Ismaa
+- Le commentaire doit donner envie de visiter le profil de Marwane
 - Court mais percutant (2-4 lignes max)
 - Montrer l'expertise sans être condescendant
-- Si possible, relier à l'expérience d'Ismaa (Axora, Pulsa, IA)
+- Si possible, relier à l'expérience de Marwane (Axora, Pulsa, IA)
 - Ton naturel, pas forcé`
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const prompt = `Post de ${author || 'quelqu\'un'} sur ${network === 'linkedin' ? 'LinkedIn' : 'Twitter/X'} :
 "${post}"
 
-Génère 3 commentaires stratégiques qu'Ismaa pourrait poster en JSON strict :
+Génère 3 commentaires stratégiques que Marwane pourrait poster en JSON strict :
 {"comments":[
   {"type":"VALEUR AJOUTÉE","text":"...","strategy":"pourquoi ce commentaire va marcher"},
   {"type":"EXPÉRIENCE PERSO","text":"...","strategy":"pourquoi ce commentaire va marcher"},
@@ -31,8 +31,8 @@ Génère 3 commentaires stratégiques qu'Ismaa pourrait poster en JSON strict :
 ]}
 
 - "VALEUR AJOUTÉE" = ajouter un insight que l'auteur n'a pas mentionné
-- "EXPÉRIENCE PERSO" = partager une expérience d'Ismaa liée au sujet
-- "QUESTION INTELLIGENTE" = poser une question qui fait réfléchir et positionne Ismaa
+- "EXPÉRIENCE PERSO" = partager une expérience de Marwane liée au sujet
+- "QUESTION INTELLIGENTE" = poser une question qui fait réfléchir et positionne Marwane
 - Max ${network === 'twitter' ? '200' : '300'} caractères chaque commentaire
 - JSON uniquement`
 

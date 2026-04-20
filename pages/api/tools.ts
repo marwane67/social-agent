@@ -2,11 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const ISMAA_CONTEXT = `Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles. Fondateur d'Axora (marketplace acquisition business digitaux, équivalent Acquire.com avec IA pour le marché francophone) et Pulsa Creatives (agence IA Bruxelles). Build in public, référence IA francophone.`
+const MARWANE_CONTEXT = `Marwane (@ismaa_pxl), entrepreneur tech à Bruxelles. Fondateur d'Axora (marketplace acquisition business digitaux, équivalent Acquire.com avec IA pour le marché francophone) et Pulsa Creatives (agence IA Bruxelles). Build in public, référence IA francophone.`
 
 const TOOLS: Record<string, (input: string, network: string) => { system: string; prompt: string }> = {
   thread: (input, network) => ({
-    system: `Tu es un expert en story threads ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en story threads ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}. ${MARWANE_CONTEXT}`,
     prompt: `Contexte : "${input}"
 
 Génère un "story thread" de 3 tweets/posts liés qui racontent une progression narrative. PAS un thread classique numéroté. Chaque tweet est AUTONOME mais ensemble ils forment une histoire.
@@ -26,7 +26,7 @@ JSON strict :
   }),
 
   repurpose: (input, network) => ({
-    system: `Tu es un expert en adaptation cross-platform. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en adaptation cross-platform. ${MARWANE_CONTEXT}`,
     prompt: `Post original (${network === 'twitter' ? 'Twitter → adapte pour LinkedIn' : 'LinkedIn → adapte pour Twitter'}) :
 "${input}"
 
@@ -39,10 +39,10 @@ ${network === 'twitter' ? 'Twitter → LinkedIn : développe, ajoute du contexte
   }),
 
   trend: (input) => ({
-    system: `Tu es un expert en newsjacking et trend surfing. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en newsjacking et trend surfing. ${MARWANE_CONTEXT}`,
     prompt: `Sujet/tendance trending : "${input}"
 
-Génère 3 posts qui surfent sur cette tendance avec l'ANGLE UNIQUE d'Ismaa (entrepreneur IA, building in public, Axora/Pulsa).
+Génère 3 posts qui surfent sur cette tendance avec l'ANGLE UNIQUE de Marwane (entrepreneur IA, building in public, Axora/Pulsa).
 
 JSON strict :
 {"posts":[
@@ -58,7 +58,7 @@ JSON strict :
   }),
 
   bio: (input, network) => ({
-    system: `Tu es un expert en personal branding et optimisation de profils sociaux. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en personal branding et optimisation de profils sociaux. ${MARWANE_CONTEXT}`,
     prompt: `Contexte/focus actuel : "${input}"
 
 Génère 3 versions de bio ${network === 'twitter' ? 'Twitter/X (max 160 chars)' : 'LinkedIn (headline max 120 chars + résumé 300 chars)'} optimisées.
@@ -77,7 +77,7 @@ JSON strict :
   }),
 
   carousel: (input, network) => ({
-    system: `Tu es un expert en carrousels ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en carrousels ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}. ${MARWANE_CONTEXT}`,
     prompt: `Sujet : "${input}"
 
 Génère le contenu complet d'un carrousel de 8 slides prêt à designer.
@@ -96,7 +96,7 @@ JSON strict :
   }),
 
   poll: (input, network) => ({
-    system: `Tu es un expert en sondages viraux. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en sondages viraux. ${MARWANE_CONTEXT}`,
     prompt: `Sujet : "${input}"
 
 Génère 3 sondages stratégiques pour ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'} qui boostent l'engagement.
@@ -115,7 +115,7 @@ JSON strict :
   }),
 
   cta: (input, network) => ({
-    system: `Tu es un expert en copywriting et CTA. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en copywriting et CTA. ${MARWANE_CONTEXT}`,
     prompt: `Contexte/objectif : "${input}"
 
 Génère des CTAs optimisés pour différents usages sur ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}.
@@ -132,8 +132,8 @@ JSON strict :
   }),
 
   analyze: (input) => ({
-    system: `Tu es un analyste de performance social media. ${ISMAA_CONTEXT}`,
-    prompt: `Voici les données de performance des posts d'Ismaa :
+    system: `Tu es un analyste de performance social media. ${MARWANE_CONTEXT}`,
+    prompt: `Voici les données de performance des posts de Marwane :
 ${input}
 
 Analyse ces données et donne des insights actionnables.
@@ -152,7 +152,7 @@ JSON strict :
   }),
 
   recycle: (input, network) => ({
-    system: `Tu es un expert en recyclage de contenu. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en recyclage de contenu. ${MARWANE_CONTEXT}`,
     prompt: `Ancien post qui a bien marché :
 "${input}"
 
@@ -170,24 +170,24 @@ JSON strict :
   }),
 
   competitor: (input) => ({
-    system: `Tu es un analyste de stratégie social media. ${ISMAA_CONTEXT}`,
-    prompt: `Post d'un concurrent/compte dans la niche d'Ismaa :
+    system: `Tu es un analyste de stratégie social media. ${MARWANE_CONTEXT}`,
+    prompt: `Post d'un concurrent/compte dans la niche de Marwane :
 "${input}"
 
-Analyse ce post et trouve les opportunités pour Ismaa.
+Analyse ce post et trouve les opportunités pour Marwane.
 
 JSON strict :
 {"analysis":{
   "strategy":"la stratégie derrière ce post",
   "strengths":"ce qui marche bien dans ce post",
   "weaknesses":"les faiblesses ou angles manqués",
-  "missed_angles":"les angles que ce concurrent ne couvre pas et qu'Ismaa pourrait prendre",
-  "counter_posts":["3 idées de posts qu'Ismaa pourrait faire en réponse/complément"]
+  "missed_angles":"les angles que ce concurrent ne couvre pas et que Marwane pourrait prendre",
+  "counter_posts":["3 idées de posts que Marwane pourrait faire en réponse/complément"]
 }}`
   }),
 
   dm: (input, network) => ({
-    system: `Tu es un expert en cold outreach et networking. ${ISMAA_CONTEXT}`,
+    system: `Tu es un expert en cold outreach et networking. ${MARWANE_CONTEXT}`,
     prompt: `Objectif du DM : "${input}"
 Plateforme : ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}
 
@@ -205,7 +205,7 @@ JSON strict :
 - CONNEXION PERSO = créer un lien personnel d'abord
 - Court (3-5 lignes max), naturel, pas template-like
 - Pas de "J'espère que vous allez bien" ou "Je me permets de..."
-- Ton naturel d'Ismaa`
+- Ton naturel de Marwane`
   }),
 }
 

@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Head><title>Dashboard — Ismaa</title></Head>
+      <Head><title>Dashboard — Marwane</title></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Dashboard" subtitle="Vue globale, vraies stats, ce qui marche">
         <div className="page">
           {/* Top stats */}

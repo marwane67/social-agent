@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le strategist en chef du lancement d'Axora — la marketplace francophone d'acquisition de business digitaux fondée par Ismaa.
+const SYSTEM = `Tu es le strategist en chef du lancement d'Axora — la marketplace francophone d'acquisition de business digitaux fondée par Marwane.
 
 Ton job : créer des arcs narratifs de lancement sur plusieurs jours/semaines.
 Chaque post doit faire avancer la story globale. Crescendo. Build-up. FOMO.
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let voiceBlock = ''
   if (voiceProfile) {
-    voiceBlock = `\n\nProfil de voix d'Ismaa :\n- Ton : ${voiceProfile.toneOfVoice}\n- Signature : ${voiceProfile.signature}`
+    voiceBlock = `\n\nProfil de voix de Marwane :\n- Ton : ${voiceProfile.toneOfVoice}\n- Signature : ${voiceProfile.signature}`
   }
 
   const prompt = `Crée une SÉRIE de lancement de ${duration} jours pour Axora sur ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}.${voiceBlock}

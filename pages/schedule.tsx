@@ -31,7 +31,7 @@ export default function SchedulePage() {
 
   return (
     <>
-      <Head><title>Schedule — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Schedule — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Schedule" subtitle="Planification des posts">
         <div className="page-content">
           <button className="add-toggle" onClick={() => setShowAdd(!showAdd)}>

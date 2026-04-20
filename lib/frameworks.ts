@@ -23,13 +23,13 @@ export const FRAMEWORKS: Framework[] = [
       { name: "L'évolution", explanation: "Tu partages, tu aides, tu progresses" },
     ],
     promptInjection: `STRUCTURE OBLIGATOIRE — VOYAGE DU HÉROS (5 actes) :
-1. Le déclic : un problème qu'Ismaa a repéré (1-2 lignes)
+1. Le déclic : un problème que Marwane a repéré (1-2 lignes)
 2. Le saut : la décision de s'y attaquer (1-2 lignes)
 3. La lutte : ce qui n'a pas marché, les tentatives ratées (2-3 lignes, c'est le coeur émotionnel)
 4. Le déclic majeur : le moment où ça clique, la solution trouvée (1-2 lignes)
-5. L'évolution : ce qui a changé, ce qu'Ismaa partage maintenant (1-2 lignes + insight final)
+5. L'évolution : ce qui a changé, ce que Marwane partage maintenant (1-2 lignes + insight final)
 
-Le but : que le lecteur vive le parcours AVEC Ismaa.`,
+Le but : que le lecteur vive le parcours AVEC Marwane.`,
     bestFor: ['linkedin'],
   },
 
@@ -43,8 +43,8 @@ Le but : que le lecteur vive le parcours AVEC Ismaa.`,
       { name: 'Quoi', explanation: "Le résultat concret : posts, vidéos, produit, insights" },
     ],
     promptInjection: `STRUCTURE OBLIGATOIRE — CERCLE D'OR (Simon Sinek) :
-1. POURQUOI (hook + 2-3 lignes) : commence par la conviction, la raison profonde. Ce qui fait qu'Ismaa se lève le matin pour Axora/Pulsa.
-2. COMMENT (3-4 lignes) : la manière unique dont Ismaa s'y prend. Le process, l'angle.
+1. POURQUOI (hook + 2-3 lignes) : commence par la conviction, la raison profonde. Ce qui fait que Marwane se lève le matin pour Axora/Pulsa.
+2. COMMENT (3-4 lignes) : la manière unique dont Marwane s'y prend. Le process, l'angle.
 3. QUOI (2-3 lignes) : le résultat concret, le produit, le post, le service.
 
 Règle d'or : ne JAMAIS commencer par le QUOI. Toujours par le POURQUOI. C'est ce qui crée l'attachement.`,

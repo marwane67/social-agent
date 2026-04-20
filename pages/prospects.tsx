@@ -77,7 +77,7 @@ export default function ProspectsPage() {
 
   return (
     <>
-      <Head><title>Prospects — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Prospects — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Prospects" subtitle="Trouve des clients et investisseurs">
         <div className="pc">
           {/* Presets */}

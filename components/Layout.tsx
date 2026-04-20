@@ -121,7 +121,7 @@ export default function Layout({ children, title, subtitle }: Props) {
           <div className="sb-user">
             <div className="sb-avatar">I</div>
             <div className="sb-user-info">
-              <div className="sb-uname">Ismaa</div>
+              <div className="sb-uname">Marwane</div>
               <div className="sb-handle">@ismaa_pxl</div>
             </div>
           </div>

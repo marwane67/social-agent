@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es Pulse, l'agent IA personnel d'Ismaa (entrepreneur tech à Bruxelles, fondateur de Axora marketplace + Pulsa Creatives).
+const SYSTEM = `Tu es Pulse, l'agent IA personnel de Marwane (entrepreneur tech à Bruxelles, fondateur de Axora marketplace + Pulsa Creatives).
 
-Ton job : aider Ismaa à gérer sa présence Twitter/X et LinkedIn de bout en bout.
+Ton job : aider Marwane à gérer sa présence Twitter/X et LinkedIn de bout en bout.
 
 Tu PEUX faire des choses concrètes via tes outils :
 - Planifier un calendrier de contenu (1 jour, 1 semaine, 1 mois)
@@ -19,7 +19,7 @@ Tu es proactif et concret :
 - Tu poses MAX 1 question si vraiment nécessaire, sinon tu proposes directement
 - Tu utilises tes outils plutôt que de juste discuter
 - Tu adaptes ton style au réseau actif (Twitter = punchy, LinkedIn = pro)
-- Tu connais Ismaa : building Axora (marketplace acquisition business digitaux FR/BE), il build in public, ton direct/cash, mélange FR/EN naturel
+- Tu connais Marwane : building Axora (marketplace acquisition business digitaux FR/BE), il build in public, ton direct/cash, mélange FR/EN naturel
 - Réponses courtes, claires, en français
 - Tu confirmes brièvement les actions faites avec leurs résultats
 
@@ -82,7 +82,7 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_performance_summary',
-      description: "Lit les insights de performance d'Ismaa : meilleur format, meilleur hook, top posts, tendance.",
+      description: "Lit les insights de performance de Marwane : meilleur format, meilleur hook, top posts, tendance.",
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },

@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le bot Telegram personnel d'Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles.
+const SYSTEM = `Tu es le bot Telegram personnel de Marwane (@ismaa_pxl), entrepreneur tech à Bruxelles.
 Projets : Axora (marketplace acquisition business digitaux francophone), Pulsa Creatives (agence IA Bruxelles).
 Style : direct, cash, authentique, mélange FR/EN naturel, zéro bullshit.`
 
@@ -123,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       await sendTelegram(chatId, `📝 *Transcription :*\n_${transcript}_\n\n⏳ Je génère 3 posts à partir de ça...`)
       // Génère 3 posts dans 3 formats différents à partir du vocal
-      const posts = await callAI(`Sur la base de ce vocal d'Ismaa, génère 3 posts Twitter (280 chars max chacun) avec 3 angles différents.
+      const posts = await callAI(`Sur la base de ce vocal de Marwane, génère 3 posts Twitter (280 chars max chacun) avec 3 angles différents.
 
 Vocal transcrit : "${transcript}"
 

@@ -67,8 +67,8 @@ export function clearProfile() {
 
 // Génère le bloc à injecter dans le system prompt
 export function profileAsPromptBlock(profile: VoiceProfile): string {
-  return `═══ STYLE ISMAA — VOICE PROFILE ═══
-Tu DOIS imiter le style exact d'Ismaa, extrait de ses meilleurs posts :
+  return `═══ STYLE MARWANE — VOICE PROFILE ═══
+Tu DOIS imiter le style exact de Marwane, extrait de ses meilleurs posts :
 
 - TON : ${profile.toneOfVoice}
 - LONGUEUR MOYENNE : ${profile.averageLength} caractères par post
@@ -80,5 +80,5 @@ Tu DOIS imiter le style exact d'Ismaa, extrait de ses meilleurs posts :
 - PONCTUATION : ${profile.punctuationHabits}
 - SIGNATURE : ${profile.signature}
 
-Règle absolue : le post doit ressembler à du Ismaa pur. Si quelqu'un qui le connaît lit le post, il doit dire "c'est lui qui l'a écrit". Pas de tournures IA. Pas de phrases trop polished.`
+Règle absolue : le post doit ressembler à du Marwane pur. Si quelqu'un qui le connaît lit le post, il doit dire "c'est lui qui l'a écrit". Pas de tournures IA. Pas de phrases trop polished.`
 }

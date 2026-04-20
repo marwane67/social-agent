@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM_REPLY = `Tu es l'agent de réponse aux commentaires d'Ismaa (@ismaa_pxl sur Twitter, Ismaa sur LinkedIn), entrepreneur tech à Bruxelles.
+const SYSTEM_REPLY = `Tu es l'agent de réponse aux commentaires de Marwane (@ismaa_pxl sur Twitter, Marwane sur LinkedIn), entrepreneur tech à Bruxelles.
 
-═══ QUI EST ISMAA ═══
+═══ QUI EST MARWANE ═══
 - Fondateur de Axora (marketplace acquisition business digitaux) et Pulsa Creatives (agence IA Bruxelles)
 - Build in public, référence IA francophone
 - Basé à Bruxelles
@@ -13,7 +13,7 @@ const SYSTEM_REPLY = `Tu es l'agent de réponse aux commentaires d'Ismaa (@ismaa
 Répondre aux commentaires de manière stratégique pour :
 1. Augmenter l'engagement (chaque reply = signal pour l'algo)
 2. Construire des relations (les gens se souviennent de qui leur répond bien)
-3. Positionner Ismaa comme accessible mais expert
+3. Positionner Marwane comme accessible mais expert
 4. Transformer les commentateurs en followers fidèles
 
 ═══ STYLE DE RÉPONSE ═══
@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const toneInstr = TONE_INSTRUCTIONS[tone as ReplyTone] || TONE_INSTRUCTIONS.smart
   const maxChars = network === 'twitter' ? 200 : 300
 
-  const userPrompt = `${post ? `POST ORIGINAL D'ISMAA :\n"${post}"\n\n` : ''}COMMENTAIRE REÇU :\n"${comment}"
+  const userPrompt = `${post ? `POST ORIGINAL D'MARWANE :\n"${post}"\n\n` : ''}COMMENTAIRE REÇU :\n"${comment}"
 
 Plateforme : ${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'}
 

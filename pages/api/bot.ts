@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-const SYSTEM = `Tu es le bot Telegram personnel d'Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles.
+const SYSTEM = `Tu es le bot Telegram personnel de Marwane (@ismaa_pxl), entrepreneur tech à Bruxelles.
 Projets : Axora (marketplace acquisition business digitaux francophone), Pulsa Creatives (agence IA Bruxelles).
 Style : direct, cash, authentique, mélange FR/EN naturel, zéro bullshit.
 

@@ -137,7 +137,7 @@ export default function AgentPage() {
                   <div className="orb-core" />
                   <div className="orb-ring" />
                 </div>
-                <h2>Salut Ismaa.</h2>
+                <h2>Salut Marwane.</h2>
                 <p>Je suis Pulse. Demande-moi de planifier ta semaine, générer des posts, analyser ta perf, ou optimiser ta bio.</p>
                 <div className="suggestions">
                   {SUGGESTIONS.map(s => (

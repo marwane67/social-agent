@@ -1,5 +1,5 @@
 // Système de tracking de performance : enregistre les vrais résultats des posts
-// pour apprendre ce qui marche pour Ismaa.
+// pour apprendre ce qui marche pour Marwane.
 
 export type PostPerformance = {
   id: string
@@ -154,7 +154,7 @@ export function computeInsights(performances: PostPerformance[]): Insights {
 // vers ce qui marche le mieux pour cet utilisateur.
 export function insightsAsPromptBlock(insights: Insights): string {
   if (insights.totalPosts < 5) return ''  // pas assez de data
-  let block = `\n\n═══ DATA PERFORMANCE — CE QUI MARCHE POUR ISMAA ═══\nBasé sur ${insights.totalPosts} posts trackés :\n`
+  let block = `\n\n═══ DATA PERFORMANCE — CE QUI MARCHE POUR MARWANE ═══\nBasé sur ${insights.totalPosts} posts trackés :\n`
   if (insights.topFormat) block += `- Meilleur format : ${insights.topFormat.format} (score moyen ${insights.topFormat.score.toFixed(1)})\n`
   if (insights.topHook) block += `- Meilleur hook : #${insights.topHook.hookId} (score moyen ${insights.topHook.score.toFixed(1)})\n`
   if (insights.topFramework) block += `- Meilleur framework : ${insights.topFramework.framework}\n`

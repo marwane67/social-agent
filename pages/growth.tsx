@@ -38,7 +38,7 @@ export default function GrowthPage() {
 
   return (
     <>
-      <Head><title>Growth — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+      <Head><title>Growth — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="Growth Hub" subtitle="Stratégie de croissance">
         <div className="page-content">
           <div className="tabs">

@@ -15,16 +15,16 @@ ${hooksAsPromptBlock(sample)}
 Règle absolue : la PREMIÈRE LIGNE doit donner envie de lire la suite. Si elle est plate, le post est mort.`
 }
 
-const SYSTEM_TWITTER = `Tu es le stratège Twitter/X #1 d'Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles qui build in public.
+const SYSTEM_TWITTER = `Tu es le stratège Twitter/X #1 de Marwane (@ismaa_pxl), entrepreneur tech à Bruxelles qui build in public.
 
-═══ QUI EST ISMAA ═══
+═══ QUI EST MARWANE ═══
 - Fondateur de Axora : marketplace d'acquisition de business digitaux pour le marché francophone (Belgique/France). C'est l'équivalent d'Acquire.com avec IA, matching intelligent, escrow, due diligence automatisée. En phase de développement, building in public.
 - Fondateur de Pulsa Creatives : agence IA à Bruxelles. "L'agence IA de Bruxelles. On livre en jours ce que les autres promettent en mois."
 - Pixel Company : holding qui chapeaute tout.
 - Basé à Bruxelles, francophone, mélange naturel français/anglais tech.
 
 ═══ OBJECTIF STRATÉGIQUE ═══
-Devenir LA référence francophone "IA + entrepreneuriat". Comme les gros comptes US qui parlent de Claude/ChatGPT mais avec un angle entrepreneur qui BUILD, pas juste qui commente. Chaque post doit positionner Ismaa comme quelqu'un qui FAIT, pas qui parle.
+Devenir LA référence francophone "IA + entrepreneuriat". Comme les gros comptes US qui parlent de Claude/ChatGPT mais avec un angle entrepreneur qui BUILD, pas juste qui commente. Chaque post doit positionner Marwane comme quelqu'un qui FAIT, pas qui parle.
 
 ═══ TON & STYLE TWITTER ═══
 - Direct, cash, zéro bullshit. Pas de "je suis ravi de partager..."
@@ -58,9 +58,9 @@ Devenir LA référence francophone "IA + entrepreneuriat". Comme les gros compte
 - Pas de corporate speak
 - JAMAIS copier le style des gros comptes US mot pour mot`
 
-const SYSTEM_LINKEDIN = `Tu es le stratège LinkedIn #1 d'Ismaa, entrepreneur tech à Bruxelles qui build in public.
+const SYSTEM_LINKEDIN = `Tu es le stratège LinkedIn #1 de Marwane, entrepreneur tech à Bruxelles qui build in public.
 
-═══ QUI EST ISMAA ═══
+═══ QUI EST MARWANE ═══
 - Fondateur de Axora : marketplace d'acquisition de business digitaux pour le marché francophone (Belgique/France). Équivalent d'Acquire.com avec IA, matching intelligent, escrow, due diligence automatisée. En phase de développement.
 - Fondateur de Pulsa Creatives : agence IA à Bruxelles. "L'agence IA de Bruxelles. On livre en jours ce que les autres promettent en mois."
 - Pixel Company : holding qui chapeaute tout.
@@ -147,7 +147,7 @@ Règles :
     types: ['CONTRARIAN', 'VÉRITÉ INCONFORTABLE', 'PRÉDICTION'],
     prompt: (input) => `Sujet/contexte : "${input}"
 
-Génère 3 posts Twitter "hot take" — des opinions tranchées qui font réagir et positionnent Ismaa comme quelqu'un qui pense différemment.
+Génère 3 posts Twitter "hot take" — des opinions tranchées qui font réagir et positionnent Marwane comme quelqu'un qui pense différemment.
 
 Format JSON strict :
 {"posts":[
@@ -159,7 +159,7 @@ Format JSON strict :
 Règles :
 - Le "CONTRARIAN" = une opinion qui va à contre-courant de ce que tout le monde dit. Doit être défendable et intelligente.
 - La "VÉRITÉ INCONFORTABLE" = quelque chose que tout le monde sait mais que personne ne dit. Direct.
-- La "PRÉDICTION" = une prédiction bold sur l'industrie/le marché basée sur ce qu'Ismaa voit en construisant
+- La "PRÉDICTION" = une prédiction bold sur l'industrie/le marché basée sur ce que Marwane voit en construisant
 - Ces posts doivent générer des replies. Les gens doivent avoir envie de répondre (d'accord ou pas)
 - Max 280 caractères. Chaque mot compte.
 - Tone : confiant, pas agressif. Intelligent, pas prétentieux.`
@@ -197,7 +197,7 @@ Règles :
     types: ['USE CASE RÉEL', 'AI vs RÉALITÉ', 'FUTUR PROCHE'],
     prompt: (input) => `Contexte : "${input}"
 
-Génère 3 posts Twitter qui positionnent Ismaa comme référence IA francophone — quelqu'un qui UTILISE l'IA pour builder, pas juste qui en parle.
+Génère 3 posts Twitter qui positionnent Marwane comme référence IA francophone — quelqu'un qui UTILISE l'IA pour builder, pas juste qui en parle.
 
 Format JSON strict :
 {"posts":[
@@ -207,7 +207,7 @@ Format JSON strict :
 ]}
 
 Règles :
-- "USE CASE RÉEL" = montrer concrètement comment Ismaa utilise Claude/l'IA dans Axora ou Pulsa. Réel.
+- "USE CASE RÉEL" = montrer concrètement comment Marwane utilise Claude/l'IA dans Axora ou Pulsa. Réel.
 - "AI vs RÉALITÉ" = déconstruire un mythe sur l'IA avec l'expérience terrain
 - "FUTUR PROCHE" = une vision de ce qui va changer dans les 6-12 mois
 - Max 280 chars. Punchy.`
@@ -327,7 +327,7 @@ Format JSON strict :
 Règles :
 - "CHIFFRES OUVERTS" = partager des chiffres réels (CA, users, coûts, taux). Les gens adorent la transparence financière.
 - "COULISSES DÉCISION" = expliquer une décision difficile prise récemment et le raisonnement derrière
-- "ERREUR PUBLIQUE" = admettre une erreur, ce qu'elle a coûté, et ce qu'Ismaa en a tiré
+- "ERREUR PUBLIQUE" = admettre une erreur, ce qu'elle a coûté, et ce que Marwane en a tiré
 - Hook ultra-fort en ligne 1 (coupé après "voir plus")
 - Format aéré : 1 idée = 1 ligne, sauts de ligne
 - 800-1500 caractères max
@@ -343,7 +343,7 @@ Règles :
     types: ['VISION INDUSTRIE', 'FRAMEWORK MAISON', 'PRÉDICTION MARCHÉ'],
     prompt: (input) => `Contexte : "${input}"
 
-Génère 3 posts LinkedIn "thought leadership" — positionner Ismaa comme LA référence francophone IA + entrepreneuriat.
+Génère 3 posts LinkedIn "thought leadership" — positionner Marwane comme LA référence francophone IA + entrepreneuriat.
 
 Format JSON strict :
 {"posts":[
@@ -354,7 +354,7 @@ Format JSON strict :
 
 Règles :
 - "VISION INDUSTRIE" = une observation sur l'industrie que personne n'a encore formulée. Basée sur l'expérience terrain.
-- "FRAMEWORK MAISON" = un framework/méthode qu'Ismaa a développé en construisant. Concret, applicable.
+- "FRAMEWORK MAISON" = un framework/méthode que Marwane a développé en construisant. Concret, applicable.
 - "PRÉDICTION MARCHÉ" = une prédiction bold sur le futur du marché (IA, SaaS, acquisition de business)
 - Hook : la première ligne doit être une affirmation forte ou une question provocatrice
 - Développement : 4-6 points courts qui soutiennent l'argument
@@ -381,7 +381,7 @@ Format JSON strict :
 
 Règles :
 - "MOMENT FONDATEUR" = le moment où tout a commencé ou tout a changé. Détails sensoriels, émotion, puis la leçon.
-- "PIVOT DÉCISIF" = un choix difficile entre deux options, pourquoi Ismaa a choisi celle-là, et le résultat
+- "PIVOT DÉCISIF" = un choix difficile entre deux options, pourquoi Marwane a choisi celle-là, et le résultat
 - "LEÇON INATTENDUE" = quelque chose d'inattendu appris en construisant. Le genre de truc qu'aucun livre ne t'apprend.
 - Structure narrative : situation → tension → résolution → insight
 - Hook émotionnel en ligne 1
@@ -408,7 +408,7 @@ Format JSON strict :
 ]}
 
 Règles :
-- "PROCESS DÉVOILÉ" = montrer étape par étape un process qu'Ismaa utilise. Pas de théorie, que du pratique.
+- "PROCESS DÉVOILÉ" = montrer étape par étape un process que Marwane utilise. Pas de théorie, que du pratique.
 - "OUTIL SECRET" = partager un outil, une stack, une config que les gens ne connaissent pas
 - "HACK TESTÉ" = un truc contre-intuitif qui a marché. Avec les chiffres avant/après.
 - Hook : "Ce process m'a fait gagner..." ou "J'aurais aimé savoir ça avant..."
@@ -477,11 +477,11 @@ Règles :
     id: 'personal_brand',
     label: 'Personal Brand',
     icon: 'ME',
-    desc: "Montrer qui est Ismaa au-delà du business",
+    desc: "Montrer qui est Marwane au-delà du business",
     types: ['VALEURS', 'ROUTINE', 'RÉFLEXION PERSO'],
     prompt: (input) => `Contexte : "${input}"
 
-Génère 3 posts LinkedIn personal branding — montrer qui est Ismaa au-delà des projets, créer une connexion humaine.
+Génère 3 posts LinkedIn personal branding — montrer qui est Marwane au-delà des projets, créer une connexion humaine.
 
 Format JSON strict :
 {"posts":[
@@ -491,7 +491,7 @@ Format JSON strict :
 ]}
 
 Règles :
-- "VALEURS" = un post qui révèle une valeur fondamentale d'Ismaa à travers une anecdote concrète
+- "VALEURS" = un post qui révèle une valeur fondamentale de Marwane à travers une anecdote concrète
 - "ROUTINE" = partager un élément de la routine quotidienne/hebdo qui contribue au succès. Pas pour se vanter, pour inspirer.
 - "RÉFLEXION PERSO" = une pensée profonde sur l'entrepreneuriat, la vie, les choix. Personnel et universel.
 - Authentique avant tout. Pas de personal branding "calculé" qui sonne fake.
@@ -508,7 +508,7 @@ Règles :
     types: ['USE CASE CONCRET', 'AVANT/APRÈS IA', 'TENDANCE IA'],
     prompt: (input) => `Contexte : "${input}"
 
-Génère 3 posts LinkedIn positionnant Ismaa comme l'expert IA francophone qui UTILISE l'IA, pas juste qui en parle.
+Génère 3 posts LinkedIn positionnant Marwane comme l'expert IA francophone qui UTILISE l'IA, pas juste qui en parle.
 
 Format JSON strict :
 {"posts":[
@@ -584,8 +584,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Injection du profil de voix de l'utilisateur si fourni
   let voiceBlock = ''
   if (voiceProfile) {
-    voiceBlock = `\n\n═══ STYLE ISMAA — VOICE PROFILE ═══
-Tu DOIS imiter le style exact d'Ismaa, extrait de ses meilleurs posts :
+    voiceBlock = `\n\n═══ STYLE MARWANE — VOICE PROFILE ═══
+Tu DOIS imiter le style exact de Marwane, extrait de ses meilleurs posts :
 
 - TON : ${voiceProfile.toneOfVoice}
 - LONGUEUR MOYENNE : ${voiceProfile.averageLength} caractères par post
@@ -597,7 +597,7 @@ Tu DOIS imiter le style exact d'Ismaa, extrait de ses meilleurs posts :
 - PONCTUATION : ${voiceProfile.punctuationHabits}
 - SIGNATURE : ${voiceProfile.signature}
 
-Règle absolue : le post doit ressembler à du Ismaa pur. Si quelqu'un qui le connaît lit le post, il doit dire "c'est lui qui l'a écrit". Pas de tournures IA. Pas de phrases trop polished.`
+Règle absolue : le post doit ressembler à du Marwane pur. Si quelqu'un qui le connaît lit le post, il doit dire "c'est lui qui l'a écrit". Pas de tournures IA. Pas de phrases trop polished.`
   }
 
   // Inject performance insights if provided
