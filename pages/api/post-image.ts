@@ -73,6 +73,39 @@ async function generateWithDalle(prompt: string): Promise<string | null> {
   }
 }
 
+async function generateWithGemini(prompt: string): Promise<string | null> {
+  // Imagen 3 via Google AI Studio API
+  if (!process.env.GEMINI_API_KEY) return null
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: '1:1',
+            safetyFilterLevel: 'block_only_high',
+            personGeneration: 'allow_adult',
+          },
+        }),
+      }
+    )
+    const data = await res.json()
+    if (res.ok && data.predictions?.[0]?.bytesBase64Encoded) {
+      // Renvoie un data URL utilisable directement dans <img src=...>
+      return `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`
+    }
+    console.error('Gemini error:', data)
+    return null
+  } catch (e) {
+    console.error('Gemini fetch error:', e)
+    return null
+  }
+}
+
 async function generateWithReplicate(prompt: string): Promise<string | null> {
   if (!process.env.REPLICATE_API_TOKEN) return null
   try {
@@ -108,11 +141,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Impossible de générer le prompt d'image" })
     }
 
-    // 2. Try DALL-E 3 first
-    let imageUrl = await generateWithDalle(imagePrompt)
-    let provider = 'dalle3'
+    // 2. Try providers in order : preferred → fallback chain
+    // Order : Gemini Imagen (rapide & moins cher) → DALL-E 3 (qualité) → Flux (fallback)
+    let imageUrl = await generateWithGemini(imagePrompt)
+    let provider = 'gemini-imagen-3'
 
-    // 3. Fallback to Flux (Replicate)
+    if (!imageUrl) {
+      imageUrl = await generateWithDalle(imagePrompt)
+      provider = 'dalle-3'
+    }
+
     if (!imageUrl) {
       imageUrl = await generateWithReplicate(imagePrompt)
       provider = 'flux'
