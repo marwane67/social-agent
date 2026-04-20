@@ -7,6 +7,8 @@ import { CalendarEntry, getEntries, deleteEntry, updateEntry } from '../lib/cale
 
 type View = 'week' | 'month' | 'list'
 type GoogleStatus = { connected: boolean; configured: boolean; email: string | null }
+type BufferProfile = { id: string; service: string; username: string; avatar?: string; default?: boolean }
+type BufferStatus = { configured: boolean; connected: boolean; user?: { name: string; email?: string }; profiles?: BufferProfile[]; error?: string }
 
 export default function CalendarPage() {
   const router = useRouter()
@@ -17,7 +19,9 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<CalendarEntry | null>(null)
   const [filterNetwork, setFilterNetwork] = useState<'all' | 'twitter' | 'linkedin'>('all')
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null)
+  const [bufferStatus, setBufferStatus] = useState<BufferStatus | null>(null)
   const [syncing, setSyncing] = useState(false)
+  const [bufferSyncing, setBufferSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [autoSync, setAutoSync] = useState(false)
   const [syncedIds, setSyncedIds] = useState<Set<string>>(new Set())
@@ -25,6 +29,7 @@ export default function CalendarPage() {
   useEffect(() => {
     setEntries(getEntries())
     fetchGoogleStatus()
+    fetchBufferStatus()
     try {
       setAutoSync(localStorage.getItem('gcal-autosync') === '1')
       const synced = JSON.parse(localStorage.getItem('gcal-synced') || '[]')
@@ -73,6 +78,47 @@ export default function CalendarPage() {
       const data = await res.json()
       setGoogleStatus(data)
     } catch {}
+  }
+
+  const fetchBufferStatus = async () => {
+    try {
+      const res = await fetch('/api/buffer/status')
+      const data = await res.json()
+      setBufferStatus(data)
+    } catch {}
+  }
+
+  const sendToBuffer = async (which: 'all' | 'upcoming' = 'upcoming') => {
+    const toSend = which === 'all'
+      ? entries
+      : entries.filter(e => new Date(e.scheduledAt).getTime() > Date.now())
+    if (toSend.length === 0) {
+      setSyncMsg({ type: 'error', text: 'Aucun post à envoyer dans Buffer' })
+      return
+    }
+    setBufferSyncing(true)
+    setSyncMsg(null)
+    try {
+      const res = await fetch('/api/buffer/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries: toSend }),
+      })
+      const data = await res.json()
+      if (res.ok && data.created > 0) {
+        setSyncMsg({
+          type: 'success',
+          text: `✓ ${data.created}/${data.total} posts envoyés dans Buffer. Vérifie sur buffer.com →`,
+        })
+      } else {
+        const firstErr = data.details?.failed?.[0]?.error || data.error || 'Échec'
+        setSyncMsg({ type: 'error', text: `Buffer : ${firstErr}` })
+      }
+    } catch (e: any) {
+      setSyncMsg({ type: 'error', text: 'Buffer : ' + (e.message || 'connexion impossible') })
+    } finally {
+      setBufferSyncing(false)
+    }
   }
 
   const connectGoogle = () => {
@@ -234,6 +280,57 @@ export default function CalendarPage() {
           )}
         </div>
 
+        {/* Buffer bar */}
+        <div className="gcal-bar">
+          {bufferStatus?.connected ? (
+            <>
+              <div className="gcal-info">
+                <span className="gcal-dot connected" style={{ background: '#168eea', boxShadow: '0 0 8px #168eea' }} />
+                <span className="gcal-text">
+                  Buffer connecté
+                  {bufferStatus.user?.name && <span className="gcal-email"> · {bufferStatus.user.name}</span>}
+                  {bufferStatus.profiles && bufferStatus.profiles.length > 0 && (
+                    <span className="gcal-email"> · {bufferStatus.profiles.length} profil(s)</span>
+                  )}
+                </span>
+                {bufferStatus.profiles && bufferStatus.profiles.length > 0 && (
+                  <div className="buf-profiles">
+                    {bufferStatus.profiles.map(p => (
+                      <span key={p.id} className={`buf-profile buf-${p.service}`}>{p.username}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="gcal-actions">
+                <button onClick={() => sendToBuffer('upcoming')} disabled={bufferSyncing || entries.length === 0} className="gcal-btn primary" style={{ background: '#168eea', borderColor: '#168eea' }}>
+                  {bufferSyncing ? 'Envoi…' : `→ Buffer (${entries.filter(e => new Date(e.scheduledAt).getTime() > Date.now()).length} à venir)`}
+                </button>
+                <a href="https://buffer.com/app" target="_blank" rel="noreferrer" className="gcal-btn">
+                  Voir Buffer ↗
+                </a>
+              </div>
+            </>
+          ) : bufferStatus?.configured && !bufferStatus.connected ? (
+            <>
+              <div className="gcal-info">
+                <span className="gcal-dot warning" />
+                <span className="gcal-text">
+                  Buffer : token invalide. <a href="https://publish.buffer.com/developers/api" target="_blank" rel="noreferrer" className="gcal-link">Régénère un token</a>
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="gcal-info">
+                <span className="gcal-dot warning" />
+                <span className="gcal-text">
+                  Buffer non configuré · <a href="https://publish.buffer.com/developers/api" target="_blank" rel="noreferrer" className="gcal-link">obtenir un token</a>
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
         {syncMsg && (
           <div className={`sync-msg sync-${syncMsg.type}`}>{syncMsg.text}</div>
         )}
@@ -326,6 +423,13 @@ export default function CalendarPage() {
             font-weight: 400;
           }
           .gcal-link { color: var(--accent); text-decoration: underline; }
+          .buf-profiles { display: inline-flex; gap: 4px; margin-left: 8px; }
+          .buf-profile { font-size: 9px; font-family: var(--mono); padding: 2px 8px; border-radius: 100px; font-weight: 600; }
+          .buf-twitter { background: rgba(255,255,255,0.1); color: var(--text); }
+          .buf-linkedin { background: rgba(10,102,194,.18); color: var(--linkedin); }
+          .buf-instagram { background: rgba(225,48,108,.18); color: #e1306c; }
+          .buf-facebook { background: rgba(24,119,242,.18); color: #1877f2; }
+          .buf-tiktok { background: rgba(255,255,255,.1); color: var(--text); }
           .autosync {
             display: inline-flex;
             align-items: center;
@@ -822,6 +926,17 @@ function DetailModal({
           <a href={addToGCalUrl(entry)} target="_blank" rel="noreferrer" className="m-btn" title="Ouvre Google Calendar avec l'event pré-rempli (1 clic)">
             + Google Calendar
           </a>
+          <button onClick={async () => {
+            try {
+              const res = await fetch('/api/buffer/schedule', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ entries: [entry] }),
+              })
+              const data = await res.json()
+              if (res.ok && data.created > 0) alert('✓ Envoyé dans Buffer')
+              else alert('Erreur Buffer : ' + (data.details?.failed?.[0]?.error || data.error))
+            } catch (e: any) { alert('Erreur : ' + e.message) }
+          }} className="m-btn">→ Buffer</button>
           <button onClick={open} className="m-btn primary">Poster sur {entry.network === 'twitter' ? 'X' : 'LinkedIn'}</button>
           <button onClick={() => onDelete(entry.id)} className="m-btn danger">Supprimer</button>
         </footer>

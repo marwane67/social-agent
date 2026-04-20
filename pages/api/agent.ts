@@ -140,6 +140,20 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'send_to_buffer',
+      description: "Envoie les posts du calendrier dans la queue Buffer pour publication automatique (Twitter/LinkedIn). Le post sera publié à la date prévue par Buffer.",
+      parameters: {
+        type: 'object',
+        properties: {
+          which: { type: 'string', enum: ['all', 'upcoming'], description: 'all = tous, upcoming = seulement les futurs' },
+        },
+        required: [],
+      },
+    },
+  },
 ]
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

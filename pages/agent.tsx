@@ -191,7 +191,6 @@ export default function AgentPage() {
 
         case 'sync_to_google_calendar': {
           const which = args.which || 'upcoming'
-          // Get entries from localStorage (since agent's view is server-side)
           const { getEntries } = await import('../lib/calendar')
           const allEntries = getEntries()
           const toSync = which === 'all'
@@ -205,6 +204,27 @@ export default function AgentPage() {
           const data = await res.json()
           if (!res.ok) return { success: false, summary: data.message || 'Sync échouée — connecte Google Calendar d\'abord' }
           return { success: true, summary: `${data.created}/${data.total} évènements synchronisés sur Google Calendar` }
+        }
+
+        case 'send_to_buffer': {
+          const which = args.which || 'upcoming'
+          const { getEntries } = await import('../lib/calendar')
+          const allEntries = getEntries()
+          const toSend = which === 'all'
+            ? allEntries
+            : allEntries.filter((e: any) => new Date(e.scheduledAt).getTime() > Date.now())
+          if (toSend.length === 0) return { success: false, summary: 'Aucun post à envoyer' }
+          const res = await fetch('/api/buffer/schedule', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries: toSend }),
+          })
+          const data = await res.json()
+          if (!res.ok) return { success: false, summary: data.error || 'Buffer échoué' }
+          if (data.created === 0) {
+            const firstErr = data.details?.failed?.[0]?.error || 'aucun profil match'
+            return { success: false, summary: `0 envoyé : ${firstErr}` }
+          }
+          return { success: true, summary: `${data.created}/${data.total} posts envoyés dans Buffer pour publication auto` }
         }
 
         default:
@@ -654,6 +674,7 @@ function ActionRow({ action, onOpen }: { action: Action; onOpen: (href: string) 
     generate_brief: 'Brief généré',
     optimize_bio: 'Bio optimisée',
     sync_to_google_calendar: 'Sync Google Calendar',
+    send_to_buffer: 'Envoi Buffer',
   }
   const label = labels[action.tool] || action.tool
   const ok = action.result?.success !== false
