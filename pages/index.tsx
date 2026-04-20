@@ -1,468 +1,690 @@
 import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
+import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 
 type Post = { type: string; text: string }
 type Network = 'twitter' | 'linkedin'
-type ScoreData = { viral: number; engagement: number; authority: number; overall: number }
-type Enhancement = {
-  score?: { score: ScoreData; strengths: string[]; weaknesses: string[]; suggestion: string }
-  translation?: { translation: string; note: string }
-  visual?: { visual: { type: string; description: string; text_on_image: string; colors: string; tool: string; impact: string } }
-}
-type HistoryEntry = { id: string; network: Network; format: string; input: string; posts: Post[]; date: string }
-type Format = { id: string; label: string; desc: string }
+type Format = { id: string; label: string }
+type GenImage = { url: string | null; prompt: string; provider: string; canvaUrl?: string; note?: string }
 
 const TW_FORMATS: Format[] = [
-  { id: 'raw_build', label: 'Raw Build', desc: "Ce que tu as build aujourd'hui" },
-  { id: 'hot_take', label: 'Hot Take', desc: 'Opinion tranchée' },
-  { id: 'behind_scenes', label: 'BTS', desc: 'Coulisses' },
-  { id: 'ai_authority', label: 'AI Authority', desc: 'Référence IA' },
-  { id: 'storytelling', label: 'Micro Story', desc: 'Mini histoire' },
-  { id: 'engagement_bait', label: 'Reply Magnet', desc: 'Max replies' },
-  { id: 'one_liner', label: 'One-Liner', desc: 'Une phrase' },
-  { id: 'axora_hype', label: 'Axora Hype', desc: 'FOMO Axora' },
+  { id: 'raw_build', label: 'Raw Build' },
+  { id: 'hot_take', label: 'Hot Take' },
+  { id: 'storytelling', label: 'Story' },
+  { id: 'one_liner', label: 'One-Liner' },
+  { id: 'behind_scenes', label: 'BTS' },
+  { id: 'ai_authority', label: 'AI Authority' },
+  { id: 'engagement_bait', label: 'Reply Magnet' },
+  { id: 'axora_hype', label: 'Axora' },
 ]
 const LI_FORMATS: Format[] = [
-  { id: 'transparency', label: 'Transparence', desc: 'Chiffres et coulisses' },
-  { id: 'thought_leadership', label: 'Thought Leader', desc: 'Expert IA + business' },
-  { id: 'storytelling_li', label: 'Storytelling', desc: 'Histoires perso' },
-  { id: 'value_bomb', label: 'Value Bomb', desc: '100% valeur' },
-  { id: 'axora_linkedin', label: 'Axora Vision', desc: 'Positionner Axora' },
-  { id: 'debate_li', label: 'Debate', desc: 'Commentaires' },
-  { id: 'personal_brand', label: 'Personal', desc: 'Qui est Ismaa' },
-  { id: 'ai_expert_li', label: 'AI Expert', desc: 'IA LinkedIn' },
-  { id: 'lead_magnet', label: 'Lead Magnet', desc: 'Capter des emails' },
+  { id: 'transparency', label: 'Transparence' },
+  { id: 'storytelling_li', label: 'Story' },
+  { id: 'thought_leadership', label: 'Thought Leader' },
+  { id: 'value_bomb', label: 'Value Bomb' },
+  { id: 'personal_brand', label: 'Personal' },
+  { id: 'debate_li', label: 'Débat' },
+  { id: 'lead_magnet', label: 'Lead Magnet' },
+  { id: 'axora_linkedin', label: 'Axora' },
 ]
 
-const STARTERS: Record<string, string[]> = {
-  raw_build: ["Aujourd'hui j'ai build...", "Décision prise :", "Feature shipped :"],
-  hot_take: ["L'IA ne va pas...", "Le marché francophone...", "Unpopular opinion :"],
-  behind_scenes: ["Notre stack :", "Process interne :"],
-  ai_authority: ["J'utilise Claude pour...", "Le prompt qui a tout changé :"],
-  storytelling: ["Il y a 3 mois...", "Le moment où j'ai failli..."],
-  engagement_bait: ["Question sincère :", "Vous en pensez quoi ?"],
-  one_liner: ["Le business c'est...", "L'IA c'est juste..."],
-  axora_hype: ["Nouvelle feature :", "Sneak peek :"],
-  transparency: ["Ce mois-ci en chiffres :", "J'ai fait une erreur :"],
-  thought_leadership: ["Ce que je vois venir :", "Dans 12 mois..."],
-  storytelling_li: ["Il y a 6 mois...", "Ma plus grosse erreur :"],
-  value_bomb: ["Mon process exact pour...", "Ce hack m'a fait gagner..."],
-  axora_linkedin: ["Pourquoi j'ai créé Axora :", "Le problème avec..."],
-  debate_li: ["Opinion impopulaire :", "Le mythe de..."],
-  personal_brand: ["Ce que j'ai appris :", "Pourquoi j'ai choisi..."],
-  ai_expert_li: ["Avant l'IA vs maintenant :", "Comment on utilise Claude :"],
-  lead_magnet: ["Mon framework pour...", "5 prompts IA pour..."],
-}
-
 export default function Home() {
+  const router = useRouter()
   const [network, setNetwork] = useState<Network>('twitter')
   const [format, setFormat] = useState('raw_build')
   const [input, setInput] = useState('')
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState<number | null>(null)
+  const [error, setError] = useState('')
   const [editing, setEditing] = useState<number | null>(null)
   const [editTexts, setEditTexts] = useState<Record<number, string>>({})
-  const [history, setHistory] = useState<HistoryEntry[]>([])
-  const [showHistory, setShowHistory] = useState(false)
-  const [enhancements, setEnhancements] = useState<Record<number, Enhancement>>({})
-  const [enhLoading, setEnhLoading] = useState<Record<number, string>>({})
-  const [activePanel, setActivePanel] = useState<Record<number, string>>({})
-  const [error, setError] = useState<string>('')
+  const [copied, setCopied] = useState<number | null>(null)
+  const [images, setImages] = useState<Record<number, GenImage>>({})
+  const [imgLoading, setImgLoading] = useState<number | null>(null)
+  const [showOptions, setShowOptions] = useState(false)
   const [selectedHook, setSelectedHook] = useState<{ id: number; text: string } | null>(null)
   const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
 
+  const formats = network === 'twitter' ? TW_FORMATS : LI_FORMATS
+  const maxChars = network === 'twitter' ? 280 : 3000
+
+  // Initial load — pick up selections from other pages
   useEffect(() => {
-    try { const h = localStorage.getItem('social-agent-history'); if (h) setHistory(JSON.parse(h)) } catch {}
-    // Récupérer le hook / framework choisi depuis la page Hooks
     try {
       const h = localStorage.getItem('selected-hook')
       if (h) { setSelectedHook(JSON.parse(h)); localStorage.removeItem('selected-hook') }
       const fw = localStorage.getItem('selected-framework')
       if (fw) { setSelectedFramework(fw); localStorage.removeItem('selected-framework') }
-      // Récupérer une idée venue du Daily Brief
       const idea = localStorage.getItem('brief-idea')
       if (idea) {
         const parsed = JSON.parse(idea)
-        setNetwork(parsed.network)
-        setFormat(parsed.format)
-        setInput(parsed.angle + '\n\nHook : ' + parsed.hook)
+        if (parsed.network) setNetwork(parsed.network)
+        if (parsed.format) setFormat(parsed.format)
+        setInput((parsed.angle || '') + (parsed.hook ? `\n\nHook : ${parsed.hook}` : ''))
         localStorage.removeItem('brief-idea')
       }
     } catch {}
   }, [])
 
-  const saveHistory = useCallback((newPosts: Post[], fmt: string, inp: string, net: Network) => {
-    const entry: HistoryEntry = { id: Date.now().toString(), network: net, format: fmt, input: inp, posts: newPosts, date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
-    const updated = [entry, ...history].slice(0, 50)
-    setHistory(updated)
-    localStorage.setItem('social-agent-history', JSON.stringify(updated))
-  }, [history])
-
-  const formats = network === 'twitter' ? TW_FORMATS : LI_FORMATS
-  const maxChars = network === 'twitter' ? 280 : 3000
-  const currentFormat = formats.find(f => f.id === format) || formats[0]
-  const accent = network === 'linkedin' ? 'var(--li)' : 'var(--accent)'
-
-  const switchNetwork = (n: Network) => {
-    setNetwork(n); setFormat(n === 'twitter' ? 'raw_build' : 'transparency')
-    setPosts([]); setEditTexts({}); setEditing(null); setEnhancements({}); setActivePanel({})
-  }
-
-  const [multiMode, setMultiMode] = useState(false)
+  // Reset format when network changes
+  useEffect(() => {
+    setFormat(network === 'twitter' ? 'raw_build' : 'transparency')
+  }, [network])
 
   const generate = async () => {
     if (!input.trim()) {
-      setError('Écris d\'abord un contexte (une décision, un chiffre, une galère...)')
+      setError('Décris ce qui se passe : une décision, un chiffre, une victoire...')
       return
     }
     setError('')
-    setLoading(true); setPosts([]); setEnhancements({}); setActivePanel({})
-    try {
-      if (multiMode) {
-        const res = await fetch('/api/multipost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea: input, network }) })
-        const data = await res.json()
-        if (data.posts) {
-          setPosts(data.posts.map((p: any) => ({ type: p.format, text: p.text })))
-          setEditTexts({}); setEditing(null)
-          saveHistory(data.posts.map((p: any) => ({ type: p.format, text: p.text })), 'multi', input, network)
-        } else {
-          setError(data.error || 'Erreur de génération. Réessaye.')
-        }
-      } else {
-        const body: any = { input, format, network }
-        if (selectedHook) body.hookId = selectedHook.id
-        if (selectedFramework) body.framework = selectedFramework
-        // Inject voice profile if it exists
-        try {
-          const voiceProfile = localStorage.getItem('voice-profile')
-          if (voiceProfile) body.voiceProfile = JSON.parse(voiceProfile)
-        } catch {}
-        // Inject performance insights if enough data
-        try {
-          const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
-          const insights = computeInsights(getPerformances())
-          if (insights.totalPosts >= 5) {
-            body.performanceInsights = insightsAsPromptBlock(insights)
-          }
-        } catch {}
-        const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        const data = await res.json()
-        if (data.posts) {
-          setPosts(data.posts); setEditTexts({}); setEditing(null)
-          saveHistory(data.posts, format, input, network)
-        } else {
-          setError(data.error || 'Erreur de génération. Réessaye.')
-        }
-      }
-    } catch (e) {
-      console.error(e)
-      setError('Connexion impossible. Vérifie ta clé OpenRouter.')
-    } finally { setLoading(false) }
-  }
+    setLoading(true)
+    setPosts([])
+    setImages({})
+    setEditTexts({})
+    setEditing(null)
 
-  const enhance = async (i: number, action: string) => {
-    const text = editTexts[i] ?? posts[i]?.text; if (!text) return
-    if (activePanel[i] === action && enhancements[i]?.[action as keyof Enhancement]) { setActivePanel(prev => { const n = { ...prev }; delete n[i]; return n }); return }
-    setActivePanel(prev => ({ ...prev, [i]: action }))
-    if (enhancements[i]?.[action as keyof Enhancement]) return
-    setEnhLoading(prev => ({ ...prev, [i]: action }))
     try {
-      const res = await fetch('/api/enhance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ post: text, action, network }) })
+      const body: any = { input, format, network }
+      if (selectedHook) body.hookId = selectedHook.id
+      if (selectedFramework) body.framework = selectedFramework
+      try {
+        const vp = localStorage.getItem('voice-profile')
+        if (vp) body.voiceProfile = JSON.parse(vp)
+      } catch {}
+      try {
+        const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
+        const insights = computeInsights(getPerformances())
+        if (insights.totalPosts >= 5) body.performanceInsights = insightsAsPromptBlock(insights)
+      } catch {}
+
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
       const data = await res.json()
-      setEnhancements(prev => ({ ...prev, [i]: { ...prev[i], [action]: data } }))
-    } catch (e) { console.error(e) } finally { setEnhLoading(prev => { const n = { ...prev }; delete n[i]; return n }) }
+      if (data.posts) {
+        setPosts(data.posts)
+        // Save to history
+        try {
+          const hist = JSON.parse(localStorage.getItem('social-agent-history') || '[]')
+          hist.unshift({
+            id: Date.now().toString(),
+            network, format, input,
+            posts: data.posts,
+            date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+          })
+          localStorage.setItem('social-agent-history', JSON.stringify(hist.slice(0, 50)))
+        } catch {}
+      } else {
+        setError(data.error || 'Erreur de génération. Réessaye.')
+      }
+    } catch {
+      setError('Connexion impossible. Vérifie ta clé OpenRouter.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const copyPost = (i: number) => { navigator.clipboard.writeText(editTexts[i] ?? posts[i].text); setCopied(i); setTimeout(() => setCopied(null), 2000) }
-  const openPost = (i: number) => {
-    const text = encodeURIComponent(editTexts[i] ?? posts[i].text)
-    window.open(network === 'twitter' ? `https://twitter.com/intent/tweet?text=${text}` : `https://www.linkedin.com/feed/?shareActive=true&text=${text}`, '_blank')
+  const generateImage = async (i: number) => {
+    const text = editTexts[i] ?? posts[i]?.text
+    if (!text) return
+    setImgLoading(i)
+    try {
+      const res = await fetch('/api/post-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postText: text, style: 'modern' }),
+      })
+      const data = await res.json()
+      if (data.url || data.canvaUrl) {
+        setImages(prev => ({ ...prev, [i]: data }))
+      }
+    } catch {} finally {
+      setImgLoading(null)
+    }
   }
-  const toggleEdit = (i: number) => { if (editing === i) setEditing(null); else { setEditing(i); if (!editTexts[i]) setEditTexts(prev => ({ ...prev, [i]: posts[i].text })) } }
+
+  const copyPost = (i: number) => {
+    const text = editTexts[i] ?? posts[i].text
+    navigator.clipboard.writeText(text)
+    setCopied(i)
+    setTimeout(() => setCopied(null), 1500)
+  }
+
+  const openInNetwork = (i: number) => {
+    const text = encodeURIComponent(editTexts[i] ?? posts[i].text)
+    window.open(
+      network === 'twitter'
+        ? `https://twitter.com/intent/tweet?text=${text}`
+        : `https://www.linkedin.com/feed/?shareActive=true&text=${text}`,
+      '_blank'
+    )
+  }
+
+  const toggleEdit = (i: number) => {
+    if (editing === i) setEditing(null)
+    else {
+      setEditing(i)
+      if (!editTexts[i]) setEditTexts(prev => ({ ...prev, [i]: posts[i].text }))
+    }
+  }
+
   const charCount = (i: number) => (editTexts[i] ?? posts[i]?.text ?? '').length
-  const loadFromHistory = (entry: HistoryEntry) => { setNetwork(entry.network); setFormat(entry.format); setInput(entry.input); setPosts(entry.posts); setEditTexts({}); setEditing(null); setEnhancements({}); setActivePanel({}); setShowHistory(false) }
 
   return (
     <>
-      <Head><title>Social Agent — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-      <Layout network={network} onNetworkChange={switchNetwork} title="Créer un post" subtitle={`${network === 'twitter' ? 'Twitter/X' : 'LinkedIn'} · ${currentFormat.label}`}>
-        <div className="page-content">
-          {/* Top actions */}
-          <div className="top-actions">
-            <button className={`mode-btn ${!multiMode ? 'mode-on' : ''}`} onClick={() => setMultiMode(false)}>3 posts</button>
-            <button className={`mode-btn ${multiMode ? 'mode-on' : ''}`} onClick={() => setMultiMode(true)}>1 idée → 5 posts</button>
-            <div style={{ flex: 1 }} />
-            <button className="ghost-btn" onClick={() => setShowHistory(!showHistory)}>
-              {showHistory ? 'Fermer' : `Historique (${history.length})`}
+      <Head>
+        <title>Compose — Social Agent</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      <Layout
+        network={network}
+        onNetworkChange={setNetwork}
+        title="Compose"
+        subtitle={`${network === 'twitter' ? 'Twitter / X' : 'LinkedIn'}`}
+      >
+        {/* === COMPOSER === */}
+        <div className="composer">
+          <textarea
+            className="prompt-input"
+            placeholder="Décris ce qui se passe. Une décision. Un chiffre. Une galère. Une victoire."
+            value={input}
+            onChange={e => { setInput(e.target.value); if (error) setError('') }}
+            rows={4}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate() }}
+          />
+
+          {/* Format pills (compact) */}
+          <div className="format-row">
+            {formats.slice(0, 4).map(f => (
+              <button
+                key={f.id}
+                className={`fmt-chip ${format === f.id ? 'fmt-on' : ''}`}
+                onClick={() => setFormat(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+            <button className="fmt-more" onClick={() => setShowOptions(!showOptions)}>
+              {showOptions ? '−' : '+'}
             </button>
           </div>
 
-          {/* History */}
-          {showHistory && (
-            <div className="history-panel">
-              {history.length === 0 && <div className="empty">Aucun post généré</div>}
-              {history.slice(0, 15).map(e => (
-                <button key={e.id} className="history-item" onClick={() => loadFromHistory(e)}>
-                  <span className="hi-net">{e.network === 'twitter' ? 'X' : 'LI'}</span>
-                  <span className="hi-text">{e.posts[0]?.text.slice(0, 70)}...</span>
-                  <span className="hi-date">{e.date}</span>
+          {/* Extra formats expanded */}
+          {showOptions && (
+            <div className="format-row format-extra">
+              {formats.slice(4).map(f => (
+                <button
+                  key={f.id}
+                  className={`fmt-chip ${format === f.id ? 'fmt-on' : ''}`}
+                  onClick={() => setFormat(f.id)}
+                >
+                  {f.label}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Format */}
-          {!multiMode && <div className="section">
-            <label className="label">Format</label>
-            <div className="format-grid">
-              {formats.map(f => (
-                <button key={f.id} className={`fmt-btn ${format === f.id ? 'fmt-active' : ''}`} onClick={() => setFormat(f.id)}>
-                  <span className="fmt-name">{f.label}</span>
-                  <span className="fmt-desc">{f.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>}
-
-          {multiMode && <div className="multi-hint">Donne une idée, l'IA génère 5 posts avec 5 angles différents (Raw Build, Hot Take, Story, One-Liner, Axora)</div>}
-
-          {/* Input */}
-          <div className="section">
-            <label className="label">Contexte</label>
-            <div className="input-wrap">
-              <textarea className="input" placeholder="Décris ce qui se passe : une décision, un chiffre, une galère, une victoire..." value={input} onChange={e => { setInput(e.target.value); if (error) setError('') }} rows={4} onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generate() }} />
-              <div className="starters">
-                {(STARTERS[format] || []).map(s => (
-                  <button key={s} className="starter" onClick={() => setInput(p => p ? p + ' ' + s : s)}>{s}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Hook / framework actifs */}
-          {(selectedHook || selectedFramework) && !multiMode && (
-            <div className="active-bar">
+          {/* Active hook / framework chips */}
+          {(selectedHook || selectedFramework) && (
+            <div className="active-chips">
               {selectedHook && (
-                <span className="active-pill">
-                  Hook #{selectedHook.id} : "{selectedHook.text}"
-                  <button onClick={() => setSelectedHook(null)} className="x-btn">×</button>
+                <span className="active-chip">
+                  Hook · {selectedHook.text.slice(0, 40)}{selectedHook.text.length > 40 ? '...' : ''}
+                  <button onClick={() => setSelectedHook(null)} aria-label="Remove">×</button>
                 </span>
               )}
               {selectedFramework && (
-                <span className="active-pill">
-                  Framework : {selectedFramework}
-                  <button onClick={() => setSelectedFramework(null)} className="x-btn">×</button>
+                <span className="active-chip">
+                  Framework · {selectedFramework}
+                  <button onClick={() => setSelectedFramework(null)} aria-label="Remove">×</button>
                 </span>
               )}
             </div>
           )}
 
-          {/* Error */}
-          {error && <div className="error-msg">{error}</div>}
+          {error && <div className="err">{error}</div>}
 
-          {/* Generate */}
-          <button className={`primary-btn ${loading ? 'btn-loading' : ''}`} onClick={generate} disabled={loading} style={{ '--accent': accent } as any}>
-            {loading ? 'Génération en cours...' : multiMode ? '1 idée → 5 posts' : `Générer 3 posts · ${currentFormat.label}`}
+          <button
+            className={`btn-gen ${loading ? 'is-loading' : ''}`}
+            onClick={generate}
+            disabled={loading}
+          >
+            {loading ? (
+              <><span className="spin" /> Génération...</>
+            ) : (
+              <>Générer 3 posts <span className="kbd">⌘ ↵</span></>
+            )}
           </button>
+        </div>
 
-          {/* Results */}
-          {posts.length > 0 && (
-            <div className="results">
-              {posts.map((post, i) => (
-                <div key={i} className="post-card">
-                  {/* Header */}
-                  <div className="pc-header">
-                    <div className="pc-avatar" style={{ background: network === 'linkedin' ? 'var(--li)' : '#fff', color: network === 'linkedin' ? '#fff' : '#000' }}>I</div>
-                    <div className="pc-info">
-                      <span className="pc-name">Ismaa</span>
-                      <span className="pc-handle">{network === 'twitter' ? '@ismaa_pxl' : 'Fondateur · Axora & Pulsa'}</span>
-                    </div>
-                    <span className="pc-badge">{post.type}</span>
+        {/* === RESULTS === */}
+        {posts.length > 0 && (
+          <div className="results">
+            {posts.map((post, i) => {
+              const text = editTexts[i] ?? post.text
+              const count = charCount(i)
+              const isOver = count > maxChars
+              const img = images[i]
+              return (
+                <article key={i} className="post-card">
+                  {/* Type badge */}
+                  <div className="pc-meta">
+                    <span className="pc-type">{post.type}</span>
+                    <span className={`pc-chars ${isOver ? 'over' : ''}`}>
+                      {count}/{maxChars}
+                    </span>
                   </div>
 
-                  {/* Text */}
+                  {/* Text or editor */}
                   {editing === i ? (
-                    <textarea className="pc-edit" value={editTexts[i] ?? post.text} onChange={e => setEditTexts(prev => ({ ...prev, [i]: e.target.value }))} rows={network === 'linkedin' ? 10 : 5} autoFocus />
+                    <textarea
+                      className="pc-edit"
+                      value={text}
+                      onChange={e => setEditTexts(prev => ({ ...prev, [i]: e.target.value }))}
+                      rows={network === 'linkedin' ? 12 : 6}
+                      autoFocus
+                    />
                   ) : (
-                    <div className="pc-text">{(editTexts[i] ?? post.text).split('\n').map((l, j, a) => <span key={j}>{l}{j < a.length - 1 && <br />}</span>)}</div>
-                  )}
-
-                  {/* Enhance buttons */}
-                  <div className="pc-enhance">
-                    {['score', 'translate', 'visual'].map(action => (
-                      <button key={action} className={`enh-btn ${activePanel[i] === action ? 'enh-on' : ''}`} onClick={() => enhance(i, action)} disabled={!!enhLoading[i]}>
-                        {enhLoading[i] === action ? '...' : action === 'score' ? 'Score' : action === 'translate' ? 'EN' : 'Visuel'}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Enhancement panels */}
-                  {activePanel[i] === 'score' && enhancements[i]?.score && (() => {
-                    const s = enhancements[i].score!
-                    return (
-                      <div className="enh-panel">
-                        <div className="score-big">{s.score.overall}<span>/10</span></div>
-                        {(['viral', 'engagement', 'authority'] as const).map(k => (
-                          <div key={k} className="score-row">
-                            <span className="score-label">{k}</span>
-                            <div className="score-bar"><div className="score-fill" style={{ width: `${s.score[k] * 10}%` }} /></div>
-                            <span className="score-val">{s.score[k]}</span>
-                          </div>
-                        ))}
-                        <div className="enh-feedback">
-                          {s.strengths.map((x, j) => <div key={j} className="fb-good">+ {x}</div>)}
-                          {s.weaknesses.map((x, j) => <div key={j} className="fb-bad">- {x}</div>)}
-                          <div className="fb-tip">{s.suggestion}</div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {activePanel[i] === 'translate' && enhancements[i]?.translation && (
-                    <div className="enh-panel">
-                      <div className="enh-label">ENGLISH</div>
-                      <div className="enh-text">{enhancements[i].translation!.translation}</div>
-                      <div className="enh-note">{enhancements[i].translation!.note}</div>
-                      <button className="copy-sm" onClick={() => navigator.clipboard.writeText(enhancements[i].translation!.translation)}>Copy EN</button>
+                    <div className="pc-text">
+                      {text.split('\n').map((line, j, arr) => (
+                        <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
+                      ))}
                     </div>
                   )}
 
-                  {activePanel[i] === 'visual' && enhancements[i]?.visual && (() => {
-                    const v = enhancements[i].visual!.visual
-                    return (
-                      <div className="enh-panel">
-                        <div className="enh-label">{v.type.toUpperCase()}</div>
-                        <div className="enh-text">{v.description}</div>
-                        {v.text_on_image && <div className="enh-note">Texte: "{v.text_on_image}"</div>}
-                        <div className="enh-meta">{v.colors} · {v.tool}</div>
-                        <div className="enh-note">{v.impact}</div>
+                  {/* Inline image */}
+                  {img && img.url && (
+                    <div className="pc-image">
+                      <img src={img.url} alt="post visual" />
+                      <div className="pc-img-actions">
+                        <a href={img.url} download={`post-${i + 1}.png`} className="pc-img-btn">
+                          Télécharger
+                        </a>
+                        <button onClick={() => generateImage(i)} className="pc-img-btn">
+                          Régénérer
+                        </button>
+                        <span className="pc-img-prov">via {img.provider}</span>
                       </div>
-                    )
-                  })()}
+                    </div>
+                  )}
+                  {img && !img.url && img.canvaUrl && (
+                    <div className="pc-canva">
+                      <div className="pc-canva-note">{img.note}</div>
+                      <a href={img.canvaUrl} target="_blank" rel="noreferrer" className="pc-canva-btn">
+                        Ouvrir Canva
+                      </a>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="pc-actions">
-                    <button className="act-btn" onClick={() => copyPost(i)}>{copied === i ? 'Copié !' : 'Copier'}</button>
-                    <button className={`act-btn ${editing === i ? 'act-on' : ''}`} onClick={() => toggleEdit(i)}>{editing === i ? 'OK' : 'Éditer'}</button>
-                    <span className={`pc-chars ${charCount(i) > maxChars ? 'chars-over' : ''}`}>{charCount(i)}/{maxChars}</span>
-                    <button className="post-btn" onClick={() => openPost(i)} style={{ '--accent': accent } as any}>
-                      Poster sur {network === 'twitter' ? 'X' : 'LinkedIn'}
+                    <button className="act" onClick={() => copyPost(i)}>
+                      {copied === i ? '✓ Copié' : 'Copier'}
+                    </button>
+                    <button className={`act ${editing === i ? 'act-on' : ''}`} onClick={() => toggleEdit(i)}>
+                      {editing === i ? 'OK' : 'Éditer'}
+                    </button>
+                    <button
+                      className="act"
+                      onClick={() => generateImage(i)}
+                      disabled={imgLoading === i}
+                    >
+                      {imgLoading === i ? (
+                        <><span className="spin spin-sm" /> Image...</>
+                      ) : img ? 'Nouvelle image' : '+ Image'}
+                    </button>
+                    <div className="act-spacer" />
+                    <button className="act-primary" onClick={() => openInNetwork(i)}>
+                      Poster sur {network === 'twitter' ? 'X' : 'LinkedIn'} →
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Empty state hint */}
+        {posts.length === 0 && !loading && (
+          <div className="empty">
+            <p>Astuce : utilise <button onClick={() => router.push('/brief')} className="link">/brief</button> pour des idées du jour, ou <button onClick={() => router.push('/library')} className="link">/library</button> pour piocher un hook.</p>
+          </div>
+        )}
 
         <style jsx>{`
-          .page-content { display:flex; flex-direction:column; gap:16px; }
-          .top-actions { display:flex; align-items:center; gap:4px; }
-          .mode-btn { padding:6px 12px; font-size:12px; font-weight:600; color:var(--muted); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; }
-          .mode-btn:hover { border-color:var(--border2); }
-          .mode-on { border-color:${accent}; color:${accent}; background:${network === 'linkedin' ? 'var(--li-dim)' : 'var(--accent-dim)'}; }
-          .multi-hint { font-size:12px; color:var(--text2); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; }
-          .ghost-btn { background:none; border:1px solid var(--border); border-radius:var(--radius-sm); padding:5px 12px; font-size:12px; color:var(--muted); cursor:pointer; font-weight:500; }
-          .ghost-btn:hover { border-color:var(--border2); color:var(--text2); }
+          /* === Composer === */
+          .composer {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
 
-          /* History */
-          .history-panel { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:8px; display:flex; flex-direction:column; gap:4px; max-height:280px; overflow-y:auto; }
-          .history-item { display:flex; align-items:center; gap:8px; padding:6px 8px; background:transparent; border:1px solid transparent; border-radius:6px; cursor:pointer; text-align:left; width:100%; font-family:var(--font); }
-          .history-item:hover { background:var(--card2); border-color:var(--border); }
-          .hi-net { font-size:9px; font-weight:700; color:var(--accent); font-family:var(--mono); background:var(--accent-dim); padding:1px 5px; border-radius:3px; flex-shrink:0; }
-          .hi-text { font-size:11px; color:var(--text2); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-          .hi-date { font-size:9px; color:var(--muted); font-family:var(--mono); flex-shrink:0; }
-          .empty { font-size:12px; color:var(--muted); text-align:center; padding:16px; }
+          .prompt-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 16px;
+            line-height: 1.55;
+            resize: none;
+            font-family: var(--font);
+            letter-spacing: -0.005em;
+          }
+          .prompt-input::placeholder {
+            color: var(--text-muted);
+          }
 
-          /* Format */
-          .section { display:flex; flex-direction:column; gap:6px; }
-          .label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
-          .format-grid { display:flex; flex-wrap:wrap; gap:4px; }
-          .fmt-btn { padding:6px 12px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; text-align:left; display:flex; flex-direction:column; gap:1px; transition:all .12s; }
-          .fmt-btn:hover { border-color:var(--border2); }
-          .fmt-active { border-color:${accent}; background:${network === 'linkedin' ? 'var(--li-dim)' : 'var(--accent-dim)'}; }
-          .fmt-name { font-size:12px; font-weight:600; color:var(--text2); }
-          .fmt-active .fmt-name { color:var(--text); }
-          .fmt-desc { font-size:10px; color:var(--muted); }
+          .format-row {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+          }
+          .format-extra {
+            margin-top: -8px;
+          }
+          .fmt-chip {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 100px;
+          }
+          .fmt-chip:hover {
+            color: var(--text-secondary);
+            border-color: var(--border-strong);
+          }
+          .fmt-on {
+            color: var(--text);
+            background: var(--surface);
+            border-color: var(--border-strong);
+          }
+          .fmt-more {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 700;
+            width: 28px;
+            height: 28px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+          }
 
-          /* Input */
-          .input-wrap { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-          .input { width:100%; background:transparent; border:none; color:var(--text); font-size:14px; padding:12px; resize:none; outline:none; line-height:1.6; }
-          .starters { display:flex; gap:4px; flex-wrap:wrap; padding:0 12px 10px; border-top:1px solid var(--border); padding-top:8px; }
-          .starter { background:var(--card2); border:1px solid var(--border); border-radius:20px; padding:2px 8px; font-size:10px; color:var(--muted); cursor:pointer; font-family:var(--mono); }
-          .starter:hover { border-color:${accent}; color:${accent}; }
+          .active-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+          }
+          .active-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-bg);
+            border: 1px solid var(--accent-border);
+            color: var(--text);
+            font-size: 11px;
+            padding: 4px 4px 4px 10px;
+            border-radius: 100px;
+            font-family: var(--mono);
+          }
+          .active-chip button {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 16px;
+            line-height: 1;
+            padding: 0 6px;
+          }
+          .active-chip button:hover { color: var(--text); }
 
-          /* Active hook / framework */
-          .active-bar { display:flex; flex-wrap:wrap; gap:6px; }
-          .active-pill { display:inline-flex; align-items:center; gap:8px; font-size:11px; color:${accent}; background:${network === 'linkedin' ? 'var(--li-dim)' : 'var(--accent-dim)'}; border:1px solid ${accent}; border-radius:20px; padding:4px 4px 4px 12px; font-family:var(--mono); max-width:100%; }
-          .x-btn { background:transparent; border:none; color:${accent}; font-size:16px; line-height:1; cursor:pointer; padding:0 6px; font-weight:700; }
-          .x-btn:hover { opacity:.7; }
+          .err {
+            font-size: 12px;
+            color: var(--danger);
+            padding: 8px 12px;
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--r-sm);
+          }
 
-          /* Error */
-          .error-msg { font-size:12px; color:#f87171; padding:8px 12px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); border-radius:var(--radius-sm); }
+          .btn-gen {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: var(--r-md);
+            padding: 13px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            letter-spacing: -0.01em;
+          }
+          .btn-gen:hover:not(:disabled) {
+            background: #fff;
+          }
+          .btn-gen.is-loading { background: var(--text-muted); color: var(--bg); }
+          .kbd {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            opacity: 0.6;
+            padding: 2px 6px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+          }
 
-          /* Generate */
-          .primary-btn { width:100%; padding:12px; background:var(--text); color:var(--bg); border:none; border-radius:var(--radius); font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; }
-          .primary-btn:hover { background:${accent}; color:${network === 'linkedin' ? '#fff' : '#000'}; }
-          .btn-loading { opacity:.6; cursor:not-allowed; }
+          .spin {
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+          }
+          .spin-sm { width: 11px; height: 11px; border-width: 1px; }
+          @keyframes spin { to { transform: rotate(360deg); } }
 
-          /* Results */
-          .results { display:flex; flex-direction:column; gap:10px; }
-          .post-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
-          .post-card:hover { border-color:var(--border2); }
+          /* === Results === */
+          .results {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+          }
 
-          .pc-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
-          .pc-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; flex-shrink:0; }
-          .pc-info { flex:1; min-width:0; }
-          .pc-name { font-size:13px; font-weight:700; display:block; }
-          .pc-handle { font-size:10px; color:var(--muted); font-family:var(--mono); }
-          .pc-badge { font-size:9px; font-weight:600; color:var(--muted); background:var(--card2); padding:2px 8px; border-radius:20px; font-family:var(--mono); text-transform:uppercase; white-space:nowrap; }
+          .post-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: border-color 0.15s;
+          }
+          .post-card:hover { border-color: var(--border-strong); }
 
-          .pc-text { font-size:14px; line-height:1.7; color:var(--text); white-space:pre-wrap; }
-          .pc-edit { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:14px; padding:10px; resize:vertical; outline:none; line-height:1.7; }
+          .pc-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .pc-type {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            font-family: var(--mono);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+          }
+          .pc-chars {
+            font-size: 11px;
+            color: var(--text-faint);
+            font-family: var(--mono);
+          }
+          .pc-chars.over { color: var(--danger); font-weight: 600; }
 
-          /* Enhance */
-          .pc-enhance { display:flex; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
-          .enh-btn { background:var(--card2); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:10px; color:var(--muted); cursor:pointer; font-family:var(--mono); font-weight:600; transition:all .12s; }
-          .enh-btn:hover { border-color:var(--border2); color:var(--text2); }
-          .enh-btn:disabled { opacity:.5; }
-          .enh-on { border-color:${accent}; color:${accent}; }
+          .pc-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text);
+            white-space: pre-wrap;
+            letter-spacing: -0.005em;
+          }
+          .pc-edit {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.6;
+            padding: 12px;
+            resize: vertical;
+            font-family: var(--font);
+          }
 
-          .enh-panel { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-top:8px; }
-          .enh-label { font-size:9px; font-weight:700; color:${accent}; font-family:var(--mono); letter-spacing:.1em; margin-bottom:6px; }
-          .enh-text { font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; }
-          .enh-note { font-size:10px; color:var(--muted); margin-top:4px; }
-          .enh-meta { font-size:10px; color:var(--text2); font-family:var(--mono); margin-top:4px; }
-          .enh-feedback { margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+          .pc-image {
+            border-radius: var(--r-md);
+            overflow: hidden;
+            background: var(--bg);
+          }
+          .pc-image img {
+            width: 100%;
+            display: block;
+          }
+          .pc-img-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+          }
+          .pc-img-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: var(--r-sm);
+            font-family: var(--mono);
+            text-decoration: none;
+          }
+          .pc-img-btn:hover { color: var(--text); border-color: var(--border-strong); }
+          .pc-img-prov {
+            font-size: 10px;
+            color: var(--text-faint);
+            font-family: var(--mono);
+            margin-left: auto;
+          }
 
-          .score-big { font-size:32px; font-weight:900; color:${accent}; text-align:center; font-family:var(--mono); }
-          .score-big span { font-size:14px; color:var(--muted); }
-          .score-row { display:flex; align-items:center; gap:8px; margin-top:4px; }
-          .score-label { font-size:10px; color:var(--text2); width:70px; font-family:var(--mono); text-transform:capitalize; }
-          .score-bar { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
-          .score-fill { height:100%; background:${accent}; border-radius:3px; }
-          .score-val { font-size:10px; color:var(--muted); font-family:var(--mono); width:20px; text-align:right; }
-          .fb-good { font-size:11px; color:#4ade80; margin-bottom:2px; }
-          .fb-bad { font-size:11px; color:#f87171; margin-bottom:2px; }
-          .fb-tip { font-size:11px; color:var(--text2); margin-top:4px; font-style:italic; }
-          .copy-sm { background:${accent}; color:${network === 'linkedin' ? '#fff' : '#000'}; border:none; border-radius:4px; padding:3px 8px; font-size:10px; font-weight:600; cursor:pointer; margin-top:6px; }
+          .pc-canva {
+            background: var(--surface);
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--r-md);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .pc-canva-note {
+            font-size: 11px;
+            color: var(--text-muted);
+          }
+          .pc-canva-btn {
+            background: var(--text);
+            color: var(--bg);
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: var(--r-sm);
+            text-align: center;
+            font-weight: 600;
+            align-self: flex-start;
+          }
 
-          /* Actions */
-          .pc-actions { display:flex; align-items:center; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); flex-wrap:wrap; }
-          .act-btn { background:var(--card2); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:11px; color:var(--text2); cursor:pointer; font-weight:500; }
-          .act-btn:hover { border-color:var(--border2); }
-          .act-on { border-color:${accent}; color:${accent}; }
-          .pc-chars { font-size:10px; font-family:var(--mono); color:var(--muted); margin-left:auto; }
-          .chars-over { color:var(--danger); }
-          .post-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:5px 14px; font-size:11px; font-weight:700; cursor:pointer; }
-          .post-btn:hover { background:${accent}; color:${network === 'linkedin' ? '#fff' : '#000'}; }
+          .pc-actions {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+          }
+          .act {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: var(--r-sm);
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .act:hover:not(:disabled) {
+            color: var(--text);
+            border-color: var(--border-strong);
+            background: var(--card);
+          }
+          .act-on {
+            color: var(--text);
+            background: var(--surface);
+            border-color: var(--border-strong);
+          }
+          .act-spacer { flex: 1; }
+          .act-primary {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            font-size: 12px;
+            padding: 6px 14px;
+            border-radius: var(--r-sm);
+            font-weight: 600;
+            letter-spacing: -0.005em;
+          }
+          .act-primary:hover { background: #fff; }
 
-          @media (max-width:600px) {
-            .format-grid { gap:3px; }
-            .fmt-btn { padding:5px 8px; }
-            .fmt-desc { display:none; }
+          .empty {
+            margin-top: 32px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+          }
+          .empty p { margin: 0; }
+          .link {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            text-decoration: underline;
+            text-decoration-color: var(--text-faint);
+            text-underline-offset: 3px;
+            font-size: inherit;
+            padding: 0;
+            font-family: var(--mono);
+          }
+          .link:hover { text-decoration-color: var(--text); }
+
+          @media (max-width: 600px) {
+            .composer { padding: 12px; }
+            .prompt-input { font-size: 15px; }
+            .post-card { padding: 14px; }
+            .pc-text { font-size: 14px; }
           }
         `}</style>
       </Layout>

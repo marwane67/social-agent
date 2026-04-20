@@ -135,7 +135,7 @@ body:has(.ec-site), html:has(.ec-site) { background: var(--ec-white) !important;
   border-radius: var(--ec-radius);
 }
 .ec-nav-layer--black {
-  background: var(--ec-turquoise);  /* turquoise au lieu de noir */
+  background: var(--ec-dark);  /* noir */
   width: 97%;
   border-radius: var(--ec-radius);
   display: flex; justify-content: space-between; align-items: center;
