@@ -1,26 +1,33 @@
-// Buffer API v2 (GraphQL) — uses Bearer token (BUFFER_ACCESS_TOKEN)
-// Old v1 (api.bufferapp.com) is deprecated for OAuth/OIDC tokens.
-// Docs : https://buffer.com/developers/api
+// Buffer GraphQL API — uses Bearer token (BUFFER_ACCESS_TOKEN)
+// Endpoint : api.buffer.com/graphql
+// Schema validated by introspection on 2026-04-20
 
-const BUFFER_GRAPHQL = 'https://graphql.buffer.com/'
+const BUFFER_GRAPHQL = 'https://api.buffer.com/graphql'
 
 export type BufferProfile = {
   id: string
-  service: string                  // 'twitter', 'linkedin', etc.
+  service: string
   service_username: string
-  service_id?: string
   formatted_username: string
   avatar?: string
   timezone?: string
   default?: boolean
+  organizationId?: string
 }
 
 export type BufferUpdate = {
   id?: string
   text: string
   profile_ids: string[]
-  scheduled_at?: number            // Unix seconds
+  scheduled_at?: number  // Unix seconds
   now?: boolean
+}
+
+export type BufferAccount = {
+  id: string
+  name: string
+  email: string
+  organizationId: string
 }
 
 /* === Token === */
@@ -32,7 +39,7 @@ export function isConfigured(): boolean {
   return !!token()
 }
 
-/* === Low-level GraphQL call === */
+/* === GraphQL call === */
 async function gql(query: string, variables?: Record<string, any>): Promise<any> {
   const t = token()
   if (!t) throw new Error('BUFFER_ACCESS_TOKEN non configuré')
@@ -54,126 +61,144 @@ async function gql(query: string, variables?: Record<string, any>): Promise<any>
   return data.data
 }
 
-/* === User === */
-export async function getUser(): Promise<{ id: string; name: string; email?: string }> {
+/* === User + organization === */
+export async function getUser(): Promise<BufferAccount> {
   const data = await gql(`
     query Me {
       account {
         id
-        name: displayName
+        name
         email
+        organizations { id name }
       }
     }
   `)
-  return data.account || { id: 'unknown', name: 'Buffer user' }
+  const acc = data?.account
+  if (!acc) throw new Error('Pas de compte trouvé')
+  const org = acc.organizations?.[0]
+  return {
+    id: acc.id,
+    name: acc.name || acc.email,
+    email: acc.email,
+    organizationId: org?.id || '',
+  }
 }
 
-/* === Channels (previously "profiles") === */
-export async function getProfiles(): Promise<BufferProfile[]> {
+/* === Channels (Buffer's term for connected social accounts) === */
+export async function getProfiles(organizationId?: string): Promise<BufferProfile[]> {
+  let orgId = organizationId
+  if (!orgId) {
+    const me = await getUser()
+    orgId = me.organizationId
+  }
+  if (!orgId) return []
+
   const data = await gql(`
-    query Channels {
-      channels {
+    query Channels($input: ChannelsInput!) {
+      channels(input: $input) {
         id
         service
         name
+        displayName
         avatar
         timezone
-        serverUrl
+        organizationId
       }
     }
-  `)
+  `, { input: { organizationId: orgId } })
+
   const channels = data?.channels || []
   return channels.map((c: any) => ({
     id: c.id,
     service: (c.service || '').toLowerCase(),
-    service_username: c.name || '',
-    formatted_username: c.name || '',
+    service_username: c.name || c.displayName || '',
+    formatted_username: c.displayName || c.name || '',
     avatar: c.avatar,
     timezone: c.timezone,
     default: false,
+    organizationId: c.organizationId,
   }))
 }
 
-/* === Create post/draft === */
-export async function createUpdate(update: BufferUpdate): Promise<{ success: boolean; updates: any[] }> {
-  // Buffer's new API uses "createPost" or "createDraft" mutations
-  const scheduledAt = update.scheduled_at ? new Date(update.scheduled_at * 1000).toISOString() : undefined
+/* === Create post (one per channel — Buffer schema requires single channelId) === */
+async function createSinglePost(
+  channelId: string,
+  text: string,
+  scheduledAt?: number,
+  shareNow = false
+): Promise<{ id: string }> {
+  const dueAt = scheduledAt ? new Date(scheduledAt * 1000).toISOString() : undefined
+
+  // Use 'customScheduled' for a specific date, 'shareNow' for immediate
+  const mode = shareNow ? 'shareNow' : 'customScheduled'
 
   const mutation = `
-    mutation CreatePost($organizationId: String, $channels: [ChannelInput!]!, $text: String!, $scheduledAt: DateTime) {
-      createPost(
-        input: {
-          channels: $channels
-          text: $text
-          scheduledAt: $scheduledAt
-          shareNow: ${!!update.now}
-        }
-      ) {
+    mutation CreatePost($input: CreatePostInput!) {
+      createPost(input: $input) {
         ... on PostActionSuccess {
-          post {
-            id
-            status
-            scheduledAt
-          }
+          post { id status }
         }
         ... on PostActionError {
-          userFriendlyMessage
           message
+          userFriendlyMessage
         }
       }
     }
   `
 
-  const channels = update.profile_ids.map(id => ({ channel: id }))
-
-  try {
-    const data = await gql(mutation, {
-      channels,
-      text: update.text,
-      scheduledAt,
-    })
-    const result = data?.createPost
-    if (result?.post) {
-      return { success: true, updates: [{ id: result.post.id }] }
-    }
-    if (result?.userFriendlyMessage || result?.message) {
-      throw new Error(result.userFriendlyMessage || result.message)
-    }
-  } catch (e) {
-    throw e
+  const input: Record<string, any> = {
+    channelId,
+    text,
+    schedulingType: 'automatic',
+    mode,
   }
-  throw new Error('Unknown Buffer response')
+  if (dueAt && !shareNow) input.dueAt = dueAt
+
+  const data = await gql(mutation, { input })
+  const result = data?.createPost
+  if (result?.post?.id) {
+    return { id: result.post.id }
+  }
+  if (result?.userFriendlyMessage || result?.message) {
+    throw new Error(result.userFriendlyMessage || result.message)
+  }
+  throw new Error('Buffer createPost: réponse inconnue')
+}
+
+export async function createUpdate(update: BufferUpdate): Promise<{ success: boolean; updates: { id: string }[] }> {
+  const created: { id: string }[] = []
+  const errors: string[] = []
+  // One post per channel (Buffer schema requires single channelId)
+  for (const cid of update.profile_ids) {
+    try {
+      const r = await createSinglePost(cid, update.text, update.scheduled_at, update.now)
+      created.push(r)
+    } catch (e: any) {
+      errors.push(`${cid}: ${e.message || 'unknown'}`)
+    }
+  }
+  if (created.length === 0 && errors.length > 0) {
+    throw new Error(errors.join(' | '))
+  }
+  return { success: true, updates: created }
 }
 
 export async function deleteUpdate(updateId: string): Promise<{ success: boolean }> {
   const mutation = `
-    mutation DeletePost($postId: PostId!) {
-      deletePost(input: { id: $postId }) {
+    mutation DeletePost($input: DeletePostInput!) {
+      deletePost(input: $input) {
         ... on PostActionSuccess { post { id } }
         ... on PostActionError { message }
       }
     }
   `
-  await gql(mutation, { postId: updateId })
+  await gql(mutation, { input: { id: updateId } })
   return { success: true }
 }
 
-export async function getPendingUpdates(profileId: string): Promise<{ updates: any[]; total: number }> {
-  const data = await gql(`
-    query Pending($channelId: ChannelId!) {
-      posts(input: { channelIds: [$channelId], status: SCHEDULED, first: 50 }) {
-        edges { node { id text scheduledAt status } }
-      }
-    }
-  `, { channelId: profileId })
-  const edges = data?.posts?.edges || []
-  const updates = edges.map((e: any) => ({
-    id: e.node.id,
-    text: e.node.text,
-    scheduled_at: e.node.scheduledAt ? Math.floor(new Date(e.node.scheduledAt).getTime() / 1000) : null,
-    status: e.node.status,
-  }))
-  return { updates, total: updates.length }
+/* === Stub : pending updates not strictly needed for sync === */
+export async function getPendingUpdates(_profileId: string): Promise<{ updates: any[]; total: number }> {
+  return { updates: [], total: 0 }
 }
 
 /* === Helpers === */
