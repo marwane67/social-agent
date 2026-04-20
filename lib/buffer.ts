@@ -126,22 +126,26 @@ async function createSinglePost(
   text: string,
   scheduledAt?: number,
   shareNow = false
-): Promise<{ id: string }> {
+): Promise<{ id: string; status?: string }> {
   const dueAt = scheduledAt ? new Date(scheduledAt * 1000).toISOString() : undefined
-
-  // Use 'customScheduled' for a specific date, 'shareNow' for immediate
   const mode = shareNow ? 'shareNow' : 'customScheduled'
 
+  // createPost returns PostActionPayload union :
+  // PostActionSuccess | NotFoundError | UnauthorizedError | UnexpectedError |
+  // RestProxyError | LimitReachedError | InvalidInputError
   const mutation = `
     mutation CreatePost($input: CreatePostInput!) {
       createPost(input: $input) {
+        __typename
         ... on PostActionSuccess {
           post { id status }
         }
-        ... on PostActionError {
-          message
-          userFriendlyMessage
-        }
+        ... on NotFoundError { message }
+        ... on UnauthorizedError { message }
+        ... on UnexpectedError { message }
+        ... on RestProxyError { message }
+        ... on LimitReachedError { message }
+        ... on InvalidInputError { message }
       }
     }
   `
@@ -156,13 +160,11 @@ async function createSinglePost(
 
   const data = await gql(mutation, { input })
   const result = data?.createPost
-  if (result?.post?.id) {
-    return { id: result.post.id }
+  if (result?.__typename === 'PostActionSuccess' && result.post?.id) {
+    return { id: result.post.id, status: result.post.status }
   }
-  if (result?.userFriendlyMessage || result?.message) {
-    throw new Error(result.userFriendlyMessage || result.message)
-  }
-  throw new Error('Buffer createPost: réponse inconnue')
+  // Any other type = error with a message field
+  throw new Error(`${result?.__typename || 'Erreur'} : ${result?.message || 'Buffer createPost échoué'}`)
 }
 
 export async function createUpdate(update: BufferUpdate): Promise<{ success: boolean; updates: { id: string }[] }> {
@@ -184,16 +186,20 @@ export async function createUpdate(update: BufferUpdate): Promise<{ success: boo
 }
 
 export async function deleteUpdate(updateId: string): Promise<{ success: boolean }> {
+  // deletePost returns DeletePostPayload union: DeletePostSuccess | VoidMutationError
   const mutation = `
     mutation DeletePost($input: DeletePostInput!) {
       deletePost(input: $input) {
-        ... on PostActionSuccess { post { id } }
-        ... on PostActionError { message }
+        __typename
+        ... on DeletePostSuccess { id }
+        ... on VoidMutationError { message }
       }
     }
   `
-  await gql(mutation, { input: { id: updateId } })
-  return { success: true }
+  const data = await gql(mutation, { input: { id: updateId } })
+  const result = data?.deletePost
+  if (result?.__typename === 'DeletePostSuccess') return { success: true }
+  throw new Error(result?.message || 'Delete échoué')
 }
 
 /* === Stub : pending updates not strictly needed for sync === */
