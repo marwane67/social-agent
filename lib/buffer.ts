@@ -1,45 +1,29 @@
-// Buffer API v1 helpers — uses BUFFER_ACCESS_TOKEN
+// Buffer API v2 (GraphQL) — uses Bearer token (BUFFER_ACCESS_TOKEN)
+// Old v1 (api.bufferapp.com) is deprecated for OAuth/OIDC tokens.
 // Docs : https://buffer.com/developers/api
 
-const BUFFER_API = 'https://api.bufferapp.com/1'
+const BUFFER_GRAPHQL = 'https://graphql.buffer.com/'
 
 export type BufferProfile = {
   id: string
-  service: string                  // 'twitter', 'linkedin', 'facebook', 'instagram', etc.
-  service_username: string         // @handle
-  service_id: string
+  service: string                  // 'twitter', 'linkedin', etc.
+  service_username: string
+  service_id?: string
   formatted_username: string
-  avatar: string
-  timezone: string
-  default: boolean
-  schedules?: { days: string[]; times: string[] }[]
+  avatar?: string
+  timezone?: string
+  default?: boolean
 }
 
 export type BufferUpdate = {
   id?: string
   text: string
-  profile_ids: string[]            // which Buffer profile(s) to post to
-  scheduled_at?: number            // Unix timestamp (seconds)
-  now?: boolean                    // post immediately
-  shorten?: boolean
-  media?: {
-    link?: string
-    description?: string
-    title?: string
-    picture?: string
-    thumbnail?: string
-  }
+  profile_ids: string[]
+  scheduled_at?: number            // Unix seconds
+  now?: boolean
 }
 
-export type BufferUpdateResponse = {
-  success: boolean
-  message?: string
-  updates?: any[]
-  buffer_count?: number
-  buffer_percentage?: number
-}
-
-/* === Helpers === */
+/* === Token === */
 function token(): string | null {
   return process.env.BUFFER_ACCESS_TOKEN || null
 }
@@ -48,80 +32,155 @@ export function isConfigured(): boolean {
   return !!token()
 }
 
-async function get(path: string): Promise<any> {
+/* === Low-level GraphQL call === */
+async function gql(query: string, variables?: Record<string, any>): Promise<any> {
   const t = token()
   if (!t) throw new Error('BUFFER_ACCESS_TOKEN non configuré')
-  const url = `${BUFFER_API}${path}${path.includes('?') ? '&' : '?'}access_token=${t}`
-  const res = await fetch(url)
-  const data = await res.json()
-  if (!res.ok) throw new Error(data?.error || `Buffer API ${res.status}`)
-  return data
-}
-
-async function post(path: string, body: Record<string, any>): Promise<any> {
-  const t = token()
-  if (!t) throw new Error('BUFFER_ACCESS_TOKEN non configuré')
-  const url = `${BUFFER_API}${path}`
-  const params = new URLSearchParams()
-  params.append('access_token', t)
-  for (const [k, v] of Object.entries(body)) {
-    if (Array.isArray(v)) {
-      v.forEach(item => params.append(`${k}[]`, String(item)))
-    } else if (v !== undefined && v !== null) {
-      params.append(k, String(v))
-    }
-  }
-  const res = await fetch(url, {
+  const res = await fetch(BUFFER_GRAPHQL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
+    headers: {
+      'Authorization': `Bearer ${t}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data?.message || data?.error || `Buffer API ${res.status}`)
-  return data
+  if (data.errors && data.errors.length > 0) {
+    throw new Error(data.errors[0]?.message || 'GraphQL error')
+  }
+  if (!res.ok) {
+    throw new Error(`Buffer API ${res.status}`)
+  }
+  return data.data
 }
 
-/* === User & profiles === */
+/* === User === */
 export async function getUser(): Promise<{ id: string; name: string; email?: string }> {
-  return get('/user.json')
+  const data = await gql(`
+    query Me {
+      account {
+        id
+        name: displayName
+        email
+      }
+    }
+  `)
+  return data.account || { id: 'unknown', name: 'Buffer user' }
 }
 
+/* === Channels (previously "profiles") === */
 export async function getProfiles(): Promise<BufferProfile[]> {
-  return get('/profiles.json')
+  const data = await gql(`
+    query Channels {
+      channels {
+        id
+        service
+        name
+        avatar
+        timezone
+        serverUrl
+      }
+    }
+  `)
+  const channels = data?.channels || []
+  return channels.map((c: any) => ({
+    id: c.id,
+    service: (c.service || '').toLowerCase(),
+    service_username: c.name || '',
+    formatted_username: c.name || '',
+    avatar: c.avatar,
+    timezone: c.timezone,
+    default: false,
+  }))
 }
 
-/* === Updates (scheduled posts) === */
-export async function getPendingUpdates(profileId: string): Promise<{ updates: any[]; total: number }> {
-  return get(`/profiles/${profileId}/updates/pending.json`)
-}
+/* === Create post/draft === */
+export async function createUpdate(update: BufferUpdate): Promise<{ success: boolean; updates: any[] }> {
+  // Buffer's new API uses "createPost" or "createDraft" mutations
+  const scheduledAt = update.scheduled_at ? new Date(update.scheduled_at * 1000).toISOString() : undefined
 
-export async function createUpdate(update: BufferUpdate): Promise<BufferUpdateResponse> {
-  const body: Record<string, any> = {
-    text: update.text,
-    profile_ids: update.profile_ids,
+  const mutation = `
+    mutation CreatePost($organizationId: String, $channels: [ChannelInput!]!, $text: String!, $scheduledAt: DateTime) {
+      createPost(
+        input: {
+          channels: $channels
+          text: $text
+          scheduledAt: $scheduledAt
+          shareNow: ${!!update.now}
+        }
+      ) {
+        ... on PostActionSuccess {
+          post {
+            id
+            status
+            scheduledAt
+          }
+        }
+        ... on PostActionError {
+          userFriendlyMessage
+          message
+        }
+      }
+    }
+  `
+
+  const channels = update.profile_ids.map(id => ({ channel: id }))
+
+  try {
+    const data = await gql(mutation, {
+      channels,
+      text: update.text,
+      scheduledAt,
+    })
+    const result = data?.createPost
+    if (result?.post) {
+      return { success: true, updates: [{ id: result.post.id }] }
+    }
+    if (result?.userFriendlyMessage || result?.message) {
+      throw new Error(result.userFriendlyMessage || result.message)
+    }
+  } catch (e) {
+    throw e
   }
-  if (update.scheduled_at) body.scheduled_at = update.scheduled_at
-  if (update.now) body.now = 'true'
-  if (update.shorten === false) body.shorten = 'false'
-  if (update.media?.link) {
-    body['media[link]'] = update.media.link
-    if (update.media.description) body['media[description]'] = update.media.description
-    if (update.media.title) body['media[title]'] = update.media.title
-    if (update.media.picture) body['media[picture]'] = update.media.picture
-  }
-  return post('/updates/create.json', body)
+  throw new Error('Unknown Buffer response')
 }
 
 export async function deleteUpdate(updateId: string): Promise<{ success: boolean }> {
-  return post(`/updates/${updateId}/destroy.json`, {})
+  const mutation = `
+    mutation DeletePost($postId: PostId!) {
+      deletePost(input: { id: $postId }) {
+        ... on PostActionSuccess { post { id } }
+        ... on PostActionError { message }
+      }
+    }
+  `
+  await gql(mutation, { postId: updateId })
+  return { success: true }
 }
 
-/* === Map our network to Buffer service === */
+export async function getPendingUpdates(profileId: string): Promise<{ updates: any[]; total: number }> {
+  const data = await gql(`
+    query Pending($channelId: ChannelId!) {
+      posts(input: { channelIds: [$channelId], status: SCHEDULED, first: 50 }) {
+        edges { node { id text scheduledAt status } }
+      }
+    }
+  `, { channelId: profileId })
+  const edges = data?.posts?.edges || []
+  const updates = edges.map((e: any) => ({
+    id: e.node.id,
+    text: e.node.text,
+    scheduled_at: e.node.scheduledAt ? Math.floor(new Date(e.node.scheduledAt).getTime() / 1000) : null,
+    status: e.node.status,
+  }))
+  return { updates, total: updates.length }
+}
+
+/* === Helpers === */
 export function networkToService(network: 'twitter' | 'linkedin'): string {
   return network === 'twitter' ? 'twitter' : 'linkedin'
 }
 
-/* === Convert calendar entry to Buffer update === */
 import type { CalendarEntry } from './calendar'
 
 export function entryToBufferUpdate(entry: CalendarEntry, profileIds: string[]): BufferUpdate {
@@ -130,6 +189,5 @@ export function entryToBufferUpdate(entry: CalendarEntry, profileIds: string[]):
     text: entry.text,
     profile_ids: profileIds,
     scheduled_at: scheduledTimestamp,
-    shorten: false,
   }
 }
