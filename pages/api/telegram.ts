@@ -36,6 +36,42 @@ async function callAI(prompt: string, maxTokens = 800) {
   return data.choices?.[0]?.message?.content?.trim() || ''
 }
 
+// Télécharge un fichier vocal depuis Telegram et le transcrit via Whisper (OpenAI ou Groq)
+async function transcribeVoice(fileId: string): Promise<string> {
+  // 1. Get file path from Telegram
+  const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getFile?file_id=${fileId}`)
+  const fileData = await fileRes.json()
+  if (!fileData.ok) throw new Error('Cannot get file')
+  const filePath = fileData.result.file_path
+
+  // 2. Download the audio
+  const audioRes = await fetch(`https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${filePath}`)
+  const audioBuf = await audioRes.arrayBuffer()
+
+  // 3. Send to Whisper (Groq is fast & free tier — fallback to OpenAI)
+  const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY
+  const apiUrl = process.env.GROQ_API_KEY
+    ? 'https://api.groq.com/openai/v1/audio/transcriptions'
+    : 'https://api.openai.com/v1/audio/transcriptions'
+  const model = process.env.GROQ_API_KEY ? 'whisper-large-v3' : 'whisper-1'
+
+  if (!apiKey) throw new Error('Pas de GROQ_API_KEY ni OPENAI_API_KEY configurée')
+
+  const form = new FormData()
+  form.append('file', new Blob([audioBuf], { type: 'audio/ogg' }), 'voice.ogg')
+  form.append('model', model)
+  form.append('language', 'fr')
+
+  const transcRes = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+  })
+  const transcData = await transcRes.json()
+  if (!transcRes.ok) throw new Error(transcData.error?.message || 'Transcription failed')
+  return transcData.text || ''
+}
+
 async function generatePost(topic: string, format: string, network: string) {
   const isTwitter = network !== 'linkedin'
   const maxChars = isTwitter ? 280 : 1500
@@ -71,9 +107,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const update = req.body
   const message = update?.message
-  if (!message?.text) return res.status(200).json({ ok: true })
+  if (!message) return res.status(200).json({ ok: true })
 
   const chatId = message.chat.id
+
+  // === HANDLE VOICE MESSAGES ===
+  if (message.voice || message.audio) {
+    try {
+      await sendTelegram(chatId, '🎙️ Je transcris ton vocal...')
+      const fileId = (message.voice || message.audio).file_id
+      const transcript = await transcribeVoice(fileId)
+      if (!transcript) {
+        await sendTelegram(chatId, "Transcription vide. Réessaye.")
+        return res.status(200).json({ ok: true })
+      }
+      await sendTelegram(chatId, `📝 *Transcription :*\n_${transcript}_\n\n⏳ Je génère 3 posts à partir de ça...`)
+      // Génère 3 posts dans 3 formats différents à partir du vocal
+      const posts = await callAI(`Sur la base de ce vocal d'Ismaa, génère 3 posts Twitter (280 chars max chacun) avec 3 angles différents.
+
+Vocal transcrit : "${transcript}"
+
+Format obligatoire :
+🟢 RAW BUILD
+[post]
+
+🟡 STORY
+[post]
+
+🔴 HOT TAKE
+[post]
+
+Pas d'emojis dans les posts. Hook fort en ligne 1.`, 1500)
+      await sendTelegram(chatId, `*3 posts générés* 🎯\n\n${posts}\n\n_Copie celui que tu préfères._`)
+    } catch (e: any) {
+      console.error(e)
+      await sendTelegram(chatId, `Erreur transcription : ${e.message || 'inconnue'}.\n\nVérifie que GROQ_API_KEY ou OPENAI_API_KEY est configurée.`)
+    }
+    return res.status(200).json({ ok: true })
+  }
+
+  if (!message.text) return res.status(200).json({ ok: true })
   const text = message.text.trim()
   const parts = text.split(/\s+/)
   const cmd = parts[0].replace('/', '').toLowerCase()

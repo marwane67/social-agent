@@ -70,8 +70,28 @@ export default function Home() {
   const [enhLoading, setEnhLoading] = useState<Record<number, string>>({})
   const [activePanel, setActivePanel] = useState<Record<number, string>>({})
   const [error, setError] = useState<string>('')
+  const [selectedHook, setSelectedHook] = useState<{ id: number; text: string } | null>(null)
+  const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
 
-  useEffect(() => { try { const h = localStorage.getItem('social-agent-history'); if (h) setHistory(JSON.parse(h)) } catch {} }, [])
+  useEffect(() => {
+    try { const h = localStorage.getItem('social-agent-history'); if (h) setHistory(JSON.parse(h)) } catch {}
+    // Récupérer le hook / framework choisi depuis la page Hooks
+    try {
+      const h = localStorage.getItem('selected-hook')
+      if (h) { setSelectedHook(JSON.parse(h)); localStorage.removeItem('selected-hook') }
+      const fw = localStorage.getItem('selected-framework')
+      if (fw) { setSelectedFramework(fw); localStorage.removeItem('selected-framework') }
+      // Récupérer une idée venue du Daily Brief
+      const idea = localStorage.getItem('brief-idea')
+      if (idea) {
+        const parsed = JSON.parse(idea)
+        setNetwork(parsed.network)
+        setFormat(parsed.format)
+        setInput(parsed.angle + '\n\nHook : ' + parsed.hook)
+        localStorage.removeItem('brief-idea')
+      }
+    } catch {}
+  }, [])
 
   const saveHistory = useCallback((newPosts: Post[], fmt: string, inp: string, net: Network) => {
     const entry: HistoryEntry = { id: Date.now().toString(), network: net, format: fmt, input: inp, posts: newPosts, date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
@@ -111,7 +131,23 @@ export default function Home() {
           setError(data.error || 'Erreur de génération. Réessaye.')
         }
       } else {
-        const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input, format, network }) })
+        const body: any = { input, format, network }
+        if (selectedHook) body.hookId = selectedHook.id
+        if (selectedFramework) body.framework = selectedFramework
+        // Inject voice profile if it exists
+        try {
+          const voiceProfile = localStorage.getItem('voice-profile')
+          if (voiceProfile) body.voiceProfile = JSON.parse(voiceProfile)
+        } catch {}
+        // Inject performance insights if enough data
+        try {
+          const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
+          const insights = computeInsights(getPerformances())
+          if (insights.totalPosts >= 5) {
+            body.performanceInsights = insightsAsPromptBlock(insights)
+          }
+        } catch {}
+        const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         const data = await res.json()
         if (data.posts) {
           setPosts(data.posts); setEditTexts({}); setEditing(null)
@@ -204,6 +240,24 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {/* Hook / framework actifs */}
+          {(selectedHook || selectedFramework) && !multiMode && (
+            <div className="active-bar">
+              {selectedHook && (
+                <span className="active-pill">
+                  Hook #{selectedHook.id} : "{selectedHook.text}"
+                  <button onClick={() => setSelectedHook(null)} className="x-btn">×</button>
+                </span>
+              )}
+              {selectedFramework && (
+                <span className="active-pill">
+                  Framework : {selectedFramework}
+                  <button onClick={() => setSelectedFramework(null)} className="x-btn">×</button>
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Error */}
           {error && <div className="error-msg">{error}</div>}
@@ -339,6 +393,12 @@ export default function Home() {
           .starters { display:flex; gap:4px; flex-wrap:wrap; padding:0 12px 10px; border-top:1px solid var(--border); padding-top:8px; }
           .starter { background:var(--card2); border:1px solid var(--border); border-radius:20px; padding:2px 8px; font-size:10px; color:var(--muted); cursor:pointer; font-family:var(--mono); }
           .starter:hover { border-color:${accent}; color:${accent}; }
+
+          /* Active hook / framework */
+          .active-bar { display:flex; flex-wrap:wrap; gap:6px; }
+          .active-pill { display:inline-flex; align-items:center; gap:8px; font-size:11px; color:${accent}; background:${network === 'linkedin' ? 'var(--li-dim)' : 'var(--accent-dim)'}; border:1px solid ${accent}; border-radius:20px; padding:4px 4px 4px 12px; font-family:var(--mono); max-width:100%; }
+          .x-btn { background:transparent; border:none; color:${accent}; font-size:16px; line-height:1; cursor:pointer; padding:0 6px; font-weight:700; }
+          .x-btn:hover { opacity:.7; }
 
           /* Error */
           .error-msg { font-size:12px; color:#f87171; padding:8px 12px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); border-radius:var(--radius-sm); }

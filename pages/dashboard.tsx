@@ -1,161 +1,230 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 import Layout from '../components/Layout'
+import { getPerformances, computeInsights, viralityScore } from '../lib/performance'
+import { getProfile } from '../lib/voice'
+import { HOOKS } from '../lib/hooks'
 
 type Network = 'twitter' | 'linkedin'
-type TrackedPost = { id: string; text: string; network: Network; date: string; likes: number; replies: number; reposts: number; views: number; notes: string }
 
 export default function DashboardPage() {
   const [network, setNetwork] = useState<Network>('twitter')
-  const [posts, setPosts] = useState<TrackedPost[]>([])
-  const [analysis, setAnalysis] = useState<any>(null)
-  const [analyzing, setAnalyzing] = useState(false)
+  const [twitterUsername, setTwitterUsername] = useState('ismaa_pxl')
+  const [twitterData, setTwitterData] = useState<any>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState('')
+  const [perfs, setPerfs] = useState<ReturnType<typeof getPerformances>>([])
 
-  useEffect(() => { try { const tr = localStorage.getItem('sa-tracker'); if(tr) setPosts(JSON.parse(tr)) } catch {} }, [])
+  useEffect(() => { setPerfs(getPerformances()) }, [])
 
-  const filtered = posts.filter(p => p.network === network)
-  const totalLikes = filtered.reduce((s,p) => s+p.likes, 0)
-  const totalReplies = filtered.reduce((s,p) => s+p.replies, 0)
-  const totalReposts = filtered.reduce((s,p) => s+p.reposts, 0)
-  const totalViews = filtered.reduce((s,p) => s+p.views, 0)
-  const avgER = totalViews > 0 ? ((totalLikes+totalReplies+totalReposts)/totalViews*100) : 0
-  const best = [...filtered].sort((a,b) => (b.likes+b.replies+b.reposts)-(a.likes+a.replies+a.reposts))[0]
+  const insights = useMemo(() => computeInsights(perfs), [perfs])
+  const filteredPerf = useMemo(() => perfs.filter(p => p.network === network), [perfs, network])
+  const voiceProfile = typeof window !== 'undefined' ? getProfile() : null
+
+  // Counters
   const historyCount = (() => { try { const h=localStorage.getItem('social-agent-history'); return h ? JSON.parse(h).length : 0 } catch { return 0 } })()
-  const hookCount = (() => { try { const h=localStorage.getItem('sa-hooks'); return h ? JSON.parse(h).length : 0 } catch { return 0 } })()
+  const samplesCount = (() => { try { const h=localStorage.getItem('voice-samples'); return h ? JSON.parse(h).length : 0 } catch { return 0 } })()
+  const abTestsCount = (() => { try { const h=localStorage.getItem('ab-tests'); return h ? JSON.parse(h).length : 0 } catch { return 0 } })()
 
-  const runAnalysis = async () => {
-    if (filtered.length < 2) return; setAnalyzing(true)
+  const syncTwitter = async () => {
+    setSyncing(true); setSyncError('')
     try {
-      const dataStr = filtered.map(p => `"${p.text.slice(0,100)}..." | L:${p.likes} R:${p.replies} RP:${p.reposts} V:${p.views} ER:${p.views>0?((p.likes+p.replies+p.reposts)/p.views*100).toFixed(2):'0'}% | ${p.notes} | ${p.date}`).join('\n')
-      const res = await fetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ input:dataStr, tool:'analyze', network }) })
-      const data = await res.json(); if(data.analysis) setAnalysis(data.analysis)
-    } catch(e) { console.error(e) } finally { setAnalyzing(false) }
+      const res = await fetch(`/api/analytics-sync?username=${encodeURIComponent(twitterUsername)}`)
+      const data = await res.json()
+      if (data.error) {
+        setSyncError(`${data.error}${data.help ? '\n→ ' + data.help : ''}`)
+      } else {
+        setTwitterData(data)
+      }
+    } catch { setSyncError('Connexion impossible') }
+    finally { setSyncing(false) }
   }
 
   const accent = network === 'linkedin' ? 'var(--li)' : 'var(--accent)'
 
   return (
     <>
-      <Head><title>Dashboard — Ismaa</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-      <Layout network={network} onNetworkChange={n => { setNetwork(n); setAnalysis(null) }} title="Dashboard" subtitle="Vue globale de ta performance">
-        <div className="page-content">
-          {/* Stats */}
+      <Head><title>Dashboard — Ismaa</title></Head>
+      <Layout network={network} onNetworkChange={setNetwork} title="Dashboard" subtitle="Vue globale, vraies stats, ce qui marche">
+        <div className="page">
+          {/* Top stats */}
           <div className="stats">
-            <div className="stat main"><div className="stat-val big">{avgER.toFixed(2)}%</div><div className="stat-lbl">Engagement Rate</div></div>
-            <div className="stat"><div className="stat-val">{filtered.length}</div><div className="stat-lbl">Posts trackés</div></div>
-            <div className="stat"><div className="stat-val">{totalLikes}</div><div className="stat-lbl">Likes</div></div>
-            <div className="stat"><div className="stat-val">{totalReplies}</div><div className="stat-lbl">Replies</div></div>
-            <div className="stat"><div className="stat-val">{totalReposts}</div><div className="stat-lbl">Reposts</div></div>
-            <div className="stat"><div className="stat-val">{totalViews > 1000 ? (totalViews/1000).toFixed(1)+'K' : totalViews}</div><div className="stat-lbl">Vues</div></div>
+            <Stat label="Posts trackés" value={insights.totalPosts.toString()} accent={accent} />
+            <Stat label="Impressions/post" value={insights.avgImpressions ? insights.avgImpressions.toLocaleString() : '0'} />
+            <Stat label="Engagement" value={`${insights.avgEngagementRate}%`} />
+            <Stat label="Tendance 7j" value={insights.trend === 'up' ? '↗' : insights.trend === 'down' ? '↘' : '→'} accent={insights.trend === 'up' ? '#4ade80' : insights.trend === 'down' ? '#f87171' : undefined} />
           </div>
 
           {/* Activity */}
-          <div className="label">Activité</div>
-          <div className="activity">
-            <div className="act-item"><span className="act-num">{historyCount}</span><span className="act-lbl">posts générés</span></div>
-            <div className="act-item"><span className="act-num">{hookCount}</span><span className="act-lbl">hooks sauvés</span></div>
+          <div className="row">
+            <ActItem label="Posts générés (total)" value={historyCount} />
+            <ActItem label="Voice samples" value={samplesCount} />
+            <ActItem label="A/B tests" value={abTestsCount} />
+            <ActItem label="Voice profile" value={voiceProfile ? '✓' : '—'} />
           </div>
 
-          {/* Best */}
-          {best && (
-            <>
-              <div className="label">Meilleur post</div>
-              <div className="best">
-                <div className="best-text">{best.text.slice(0,150)}{best.text.length>150?'...':''}</div>
-                <div className="best-metrics">
-                  <span>{best.likes} likes</span><span>{best.replies} replies</span><span>{best.reposts} reposts</span>
-                  <span className="best-er">ER: {best.views>0?((best.likes+best.replies+best.reposts)/best.views*100).toFixed(2):'0'}%</span>
+          {/* Twitter sync */}
+          <div className="sync-card">
+            <h3>Sync Twitter API (vraies stats live)</h3>
+            <div className="sync-row">
+              <input
+                type="text"
+                placeholder="username (sans @)"
+                value={twitterUsername}
+                onChange={e => setTwitterUsername(e.target.value)}
+                className="input"
+              />
+              <button onClick={syncTwitter} disabled={syncing} className="sync-btn">
+                {syncing ? 'Sync...' : 'Synchroniser'}
+              </button>
+            </div>
+            {syncError && <div className="sync-err">{syncError}</div>}
+            {twitterData && (
+              <div className="sync-result">
+                <div className="sr-row">
+                  <Stat label="Followers" value={twitterData.profile.followers.toLocaleString()} accent="#1da1f2" />
+                  <Stat label="Posts récents" value={twitterData.summary.count.toString()} />
+                  <Stat label="Impressions (20)" value={twitterData.summary.totalImpressions.toLocaleString()} />
+                  <Stat label="ER moyen" value={`${twitterData.summary.avgER}%`} />
+                </div>
+                <h4>20 derniers tweets (live)</h4>
+                <div className="tweets">
+                  {twitterData.tweets.slice(0, 10).map((t: any) => (
+                    <div key={t.id} className="tweet">
+                      <div className="tw-text">{t.text.slice(0, 120)}{t.text.length > 120 ? '...' : ''}</div>
+                      <div className="tw-stats">
+                        <span>{t.impressions.toLocaleString()} vues</span>
+                        <span>{t.likes} ❤</span>
+                        <span>{t.replies} 💬</span>
+                        <span>{t.reposts} ↻</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </>
+            )}
+          </div>
+
+          {/* What works */}
+          {insights.totalPosts >= 5 && (
+            <div className="works">
+              <h3>Ce qui marche le mieux pour toi</h3>
+              <div className="works-grid">
+                {insights.topFormat && (
+                  <Insight label="Top format" value={insights.topFormat.format} score={`Score ${insights.topFormat.score.toFixed(1)}`} />
+                )}
+                {insights.topHook && (
+                  <Insight
+                    label="Top hook"
+                    value={`"${HOOKS.find(h => h.id === insights.topHook!.hookId)?.text || `#${insights.topHook.hookId}`}"`}
+                    score={`Score ${insights.topHook.score.toFixed(1)}`}
+                  />
+                )}
+                {insights.topFramework && (
+                  <Insight label="Top framework" value={insights.topFramework.framework} score={`Score ${insights.topFramework.score.toFixed(1)}`} />
+                )}
+                {insights.topNetwork && (
+                  <Insight label="Top réseau" value={insights.topNetwork === 'twitter' ? 'Twitter / X' : 'LinkedIn'} />
+                )}
+              </div>
+            </div>
           )}
 
-          {/* Leaderboard */}
-          {filtered.length > 0 && (
-            <>
-              <div className="label">Classement par ER</div>
+          {/* Top posts */}
+          {insights.bestPosts.length > 0 && (
+            <div>
+              <h3 className="sec-title">Tes 5 meilleurs posts</h3>
               <div className="board">
-                {[...filtered].sort((a,b) => { const ea=a.views>0?(a.likes+a.replies+a.reposts)/a.views:0; const eb=b.views>0?(b.likes+b.replies+b.reposts)/b.views:0; return eb-ea }).slice(0,8).map((p,i) => (
+                {insights.bestPosts.map((p, i) => (
                   <div key={p.id} className="board-row">
-                    <span className="board-rank">#{i+1}</span>
-                    <span className="board-text">{p.text.slice(0,50)}...</span>
-                    <span className="board-er">{p.views>0?((p.likes+p.replies+p.reposts)/p.views*100).toFixed(2):'0'}%</span>
+                    <span className="board-rank">#{i + 1}</span>
+                    <span className="board-net">{p.network === 'twitter' ? 'X' : 'in'}</span>
+                    <span className="board-text">{p.text.slice(0, 80)}...</span>
+                    <span className="board-er">Score {viralityScore(p)}</span>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
-          {/* Analysis */}
-          <div className="label">Analyse IA</div>
-          {filtered.length < 2 ? (
-            <div className="empty">Tracke au moins 2 posts dans Growth &gt; A/B Tracker</div>
-          ) : (
-            <button className={`primary-btn ${analyzing ? 'btn-loading' : ''}`} onClick={runAnalysis} disabled={analyzing}>
-              {analyzing ? 'Analyse...' : 'Lancer l\'analyse'}
-            </button>
-          )}
-
-          {analysis && (
-            <div className="an-grid">
-              {[
-                { l: 'Meilleur format', v: analysis.best_format },
-                { l: 'Meilleur créneau', v: analysis.best_time },
-                { l: 'Style de hook', v: analysis.best_hook_style },
-                { l: 'Tendance', v: analysis.engagement_trend },
-              ].map((x,i) => <div key={i} className="an-card"><div className="an-label">{x.l}</div><div className="an-val">{x.v}</div></div>)}
-              {analysis.weak_spot && <div className="an-card full weak"><div className="an-label">Point faible</div><div className="an-val">{analysis.weak_spot}</div></div>}
-              {analysis.recommendations && <div className="an-card full"><div className="an-label">Recommandations</div>{analysis.recommendations.map((r: string, i: number) => <div key={i} className="an-rec">{i+1}. {r}</div>)}</div>}
-              {analysis.next_week_plan && <div className="an-card full plan"><div className="an-label">Plan semaine prochaine</div><div className="an-val">{analysis.next_week_plan}</div></div>}
+          {/* Empty state */}
+          {insights.totalPosts === 0 && !twitterData && (
+            <div className="empty">
+              <p>Aucune donnée encore.</p>
+              <p>→ Va sur <strong>/performance</strong> pour rentrer les stats de tes posts</p>
+              <p>→ Ou configure <code>TWITTER_BEARER_TOKEN</code> pour sync auto</p>
             </div>
           )}
         </div>
 
         <style jsx>{`
-          .page-content { display:flex; flex-direction:column; gap:14px; }
-          .label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
-          .empty { font-size:12px; color:var(--muted); text-align:center; padding:20px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); }
+          .page { display: flex; flex-direction: column; gap: 14px; }
+          .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+          @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+          .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+          @media (max-width: 600px) { .row { grid-template-columns: repeat(2, 1fr); } }
 
-          .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-          .stat { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; text-align:center; }
-          .stat.main { grid-column:span 3; border-color:${network==='linkedin'?'var(--li-border)':'var(--accent-border)'}; }
-          .stat-val { font-size:20px; font-weight:900; color:var(--text); font-family:var(--mono); }
-          .stat-val.big { font-size:36px; color:${accent}; }
-          .stat-lbl { font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+          .sync-card, .works { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+          .sync-card h3, .works h3 { margin: 0 0 10px; font-size: 13px; font-weight: 700; }
+          .sync-row { display: flex; gap: 6px; }
+          .input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: var(--mono); }
+          .sync-btn { background: var(--text); color: var(--bg); border: none; border-radius: var(--radius-sm); padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer; }
+          .sync-btn:disabled { opacity: .5; }
+          .sync-err { font-size: 11px; color: #f87171; padding: 8px 10px; background: rgba(239,68,68,.08); border-radius: var(--radius-sm); margin-top: 8px; white-space: pre-wrap; }
+          .sync-result { margin-top: 12px; }
+          .sync-result h4 { font-size: 12px; font-weight: 700; margin: 12px 0 6px; }
+          .sr-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+          @media (max-width: 600px) { .sr-row { grid-template-columns: repeat(2, 1fr); } }
 
-          .activity { display:flex; gap:6px; }
-          .act-item { flex:1; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:10px; text-align:center; }
-          .act-num { font-size:18px; font-weight:900; color:${accent}; font-family:var(--mono); display:block; }
-          .act-lbl { font-size:9px; color:var(--muted); font-family:var(--mono); }
+          .tweets { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+          .tweet { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+          .tw-text { font-size: 11px; color: var(--text); line-height: 1.5; }
+          .tw-stats { display: flex; gap: 10px; font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 4px; }
 
-          .best { background:var(--card); border:1px solid ${network==='linkedin'?'var(--li-border)':'var(--accent-border)'}; border-radius:var(--radius); padding:12px; }
-          .best-text { font-size:13px; color:var(--text); line-height:1.5; margin-bottom:6px; }
-          .best-metrics { display:flex; gap:10px; font-size:10px; color:var(--text2); font-family:var(--mono); flex-wrap:wrap; }
-          .best-er { color:${accent}; font-weight:700; }
+          .works-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+          @media (max-width: 600px) { .works-grid { grid-template-columns: 1fr; } }
 
-          .board { display:flex; flex-direction:column; gap:3px; }
-          .board-row { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; }
-          .board-rank { font-size:11px; font-weight:900; color:${accent}; font-family:var(--mono); width:24px; }
-          .board-text { font-size:11px; color:var(--text2); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-          .board-er { font-size:11px; font-weight:700; color:${accent}; font-family:var(--mono); }
+          .sec-title { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+          .board { display: flex; flex-direction: column; gap: 4px; }
+          .board-row { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+          .board-rank { font-size: 12px; font-weight: 800; color: ${accent}; font-family: var(--mono); width: 28px; }
+          .board-net { font-size: 9px; font-weight: 700; color: var(--muted); width: 18px; font-family: var(--mono); }
+          .board-text { flex: 1; font-size: 11px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .board-er { font-size: 11px; font-weight: 700; color: #4ade80; font-family: var(--mono); }
 
-          .primary-btn { width:100%; padding:12px; background:var(--text); color:var(--bg); border:none; border-radius:var(--radius); font-size:14px; font-weight:700; cursor:pointer; }
-          .primary-btn:hover { background:${accent}; color:${network==='linkedin'?'#fff':'#000'}; }
-          .btn-loading { opacity:.6; cursor:not-allowed; }
-
-          .an-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-          .an-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:10px; }
-          .an-card.full { grid-column:span 2; }
-          .an-card.weak { border-color:rgba(239,68,68,.2); }
-          .an-card.plan { border-color:${network==='linkedin'?'var(--li-border)':'var(--accent-border)'}; }
-          .an-label { font-size:9px; font-weight:700; color:${accent}; font-family:var(--mono); text-transform:uppercase; margin-bottom:4px; }
-          .an-card.weak .an-label { color:var(--danger); }
-          .an-val { font-size:12px; color:var(--text); line-height:1.5; }
-          .an-rec { font-size:12px; color:var(--text); margin-bottom:3px; }
-
-          @media (max-width:600px) { .stats { grid-template-columns:repeat(2,1fr); } .stat.main { grid-column:span 2; } .an-grid { grid-template-columns:1fr; } .an-card.full { grid-column:span 1; } }
+          .empty { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 24px; text-align: center; font-size: 12px; color: var(--text2); line-height: 1.8; }
+          .empty p { margin: 0; }
+          .empty code { background: var(--bg); padding: 2px 6px; border-radius: 3px; font-family: var(--mono); font-size: 11px; }
         `}</style>
       </Layout>
     </>
+  )
+}
+
+function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--mono)' }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: accent || 'var(--text)', marginTop: 4, fontFamily: 'var(--mono)' }}>{value}</div>
+    </div>
+  )
+}
+
+function ActItem({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', textAlign: 'center' }}>
+      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{value}</div>
+      <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
+function Insight({ label, value, score }: { label: string; value: string; score?: string }) {
+  return (
+    <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--mono)' }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginTop: 4, lineHeight: 1.4 }}>{value}</div>
+      {score && <div style={{ fontSize: 10, color: '#4ade80', marginTop: 4, fontFamily: 'var(--mono)' }}>{score}</div>}
+    </div>
   )
 }

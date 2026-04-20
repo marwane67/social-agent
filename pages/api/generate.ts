@@ -1,6 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { sampleHooks, hooksAsPromptBlock, HOOKS } from '../../lib/hooks'
+import { frameworkById } from '../../lib/frameworks'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
+
+// Bloc hooks injecté dans chaque prompt — l'IA pioche dans cette liste pour ouvrir
+function buildHookBlock(): string {
+  const sample = sampleHooks(12)
+  return `═══ BANQUE DE HOOKS À UTILISER ═══
+Voici 12 hooks viraux FR éprouvés. Pour CHAQUE post généré, ouvre par UN de ces hooks (en l'adaptant au contexte) OU par un hook que tu inventes dans le même style :
+
+${hooksAsPromptBlock(sample)}
+
+Règle absolue : la PREMIÈRE LIGNE doit donner envie de lire la suite. Si elle est plate, le post est mort.`
+}
 
 const SYSTEM_TWITTER = `Tu es le stratège Twitter/X #1 d'Ismaa (@ismaa_pxl), entrepreneur tech à Bruxelles qui build in public.
 
@@ -544,13 +557,56 @@ Règles :
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { input, format, network } = req.body
+  const { input, format, network, framework, hookId, voiceProfile, performanceInsights } = req.body
   if (!input || !format || !network) return res.status(400).json({ error: 'Missing fields' })
 
   const formats = network === 'linkedin' ? LINKEDIN_FORMATS : TWITTER_FORMATS
-  const system = network === 'linkedin' ? SYSTEM_LINKEDIN : SYSTEM_TWITTER
+  const baseSystem = network === 'linkedin' ? SYSTEM_LINKEDIN : SYSTEM_TWITTER
   const f = formats[format]
   if (!f) return res.status(400).json({ error: 'Invalid format' })
+
+  // Injection du framework storytelling si demandé
+  let frameworkBlock = ''
+  if (framework) {
+    const fw = frameworkById(framework)
+    if (fw) frameworkBlock = `\n\n═══ FRAMEWORK STORYTELLING IMPOSÉ ═══\n${fw.promptInjection}`
+  }
+
+  // Injection d'un hook spécifique si demandé (sinon banque aléatoire)
+  let hookBlock = ''
+  if (hookId) {
+    const h = HOOKS.find(x => x.id === Number(hookId))
+    if (h) hookBlock = `\n\n═══ HOOK D'OUVERTURE IMPOSÉ ═══\nLa PREMIÈRE LIGNE de chaque post doit être (ou démarrer par) :\n"${h.text}"\nAdapte-le au contexte mais garde l'esprit du hook.`
+  } else {
+    hookBlock = `\n\n${buildHookBlock()}`
+  }
+
+  // Injection du profil de voix de l'utilisateur si fourni
+  let voiceBlock = ''
+  if (voiceProfile) {
+    voiceBlock = `\n\n═══ STYLE ISMAA — VOICE PROFILE ═══
+Tu DOIS imiter le style exact d'Ismaa, extrait de ses meilleurs posts :
+
+- TON : ${voiceProfile.toneOfVoice}
+- LONGUEUR MOYENNE : ${voiceProfile.averageLength} caractères par post
+- STRUCTURE DE PHRASE : ${voiceProfile.sentenceStyle}
+- TICS DE VOCABULAIRE (à réutiliser naturellement) : ${(voiceProfile.vocabularyTics || []).join(', ')}
+- THÈMES RÉCURRENTS : ${(voiceProfile.topicsRecurring || []).join(', ')}
+- EMOJIS : ${voiceProfile.emojiUsage}
+- HOOKS PRÉFÉRÉS : ${voiceProfile.hookStyle}
+- PONCTUATION : ${voiceProfile.punctuationHabits}
+- SIGNATURE : ${voiceProfile.signature}
+
+Règle absolue : le post doit ressembler à du Ismaa pur. Si quelqu'un qui le connaît lit le post, il doit dire "c'est lui qui l'a écrit". Pas de tournures IA. Pas de phrases trop polished.`
+  }
+
+  // Inject performance insights if provided
+  let perfBlock = ''
+  if (performanceInsights && typeof performanceInsights === 'string') {
+    perfBlock = '\n\n' + performanceInsights
+  }
+
+  const system = baseSystem + voiceBlock + perfBlock + hookBlock + frameworkBlock
 
   try {
     const response = await fetch(OPENROUTER_URL, {

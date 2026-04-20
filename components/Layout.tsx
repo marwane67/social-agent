@@ -5,16 +5,32 @@ import { useState } from 'react'
 type Network = 'twitter' | 'linkedin'
 
 const NAV = [
-  { href: '/', label: 'Posts', emoji: 'P' },
-  { href: '/reply', label: 'Reply', emoji: 'R' },
-  { href: '/tools', label: 'Tools', emoji: 'T' },
-  { href: '/swipe', label: 'Swipe File', emoji: 'F' },
-  { href: '/schedule', label: 'Schedule', emoji: 'S' },
-  { href: '/prospects', label: 'Prospects', emoji: 'Q' },
-  { href: '/outreach', label: 'Outreach', emoji: 'O' },
-  { href: '/growth', label: 'Growth', emoji: 'G' },
-  { href: '/dashboard', label: 'Dashboard', emoji: 'D' },
+  { href: '/', label: 'Posts', emoji: 'P', section: 'create' },
+  { href: '/brief', label: 'Daily Brief', emoji: 'B', section: 'create' },
+  { href: '/hooks', label: 'Hooks', emoji: 'H', section: 'create' },
+  { href: '/series', label: 'Launch Series', emoji: 'L', section: 'create' },
+  { href: '/abtest', label: 'A/B Test', emoji: 'A', section: 'create' },
+  { href: '/newsletter', label: 'Newsletter', emoji: 'N', section: 'create' },
+  { href: '/images', label: 'Images', emoji: 'I', section: 'create' },
+  { href: '/reply', label: 'Reply', emoji: 'R', section: 'engage' },
+  { href: '/tools', label: 'Tools', emoji: 'T', section: 'engage' },
+  { href: '/swipe', label: 'Swipe File', emoji: 'F', section: 'engage' },
+  { href: '/schedule', label: 'Schedule', emoji: 'S', section: 'engage' },
+  { href: '/prospects', label: 'Prospects', emoji: 'Q', section: 'grow' },
+  { href: '/outreach', label: 'Outreach', emoji: 'O', section: 'grow' },
+  { href: '/growth', label: 'Growth', emoji: 'G', section: 'grow' },
+  { href: '/voice', label: 'Ma Voix', emoji: 'V', section: 'tune' },
+  { href: '/performance', label: 'Performance', emoji: '%', section: 'tune' },
+  { href: '/bio', label: 'Bio', emoji: '@', section: 'tune' },
+  { href: '/dashboard', label: 'Dashboard', emoji: 'D', section: 'tune' },
 ]
+
+const SECTION_LABELS: Record<string, string> = {
+  create: 'CRÉER',
+  engage: 'ENGAGER',
+  grow: 'GROWTH',
+  tune: 'TUNING',
+}
 
 type Props = {
   children: React.ReactNode
@@ -49,16 +65,21 @@ export default function Layout({ children, network, onNetworkChange, title, subt
         </div>
 
         <nav className="sb-nav">
-          {NAV.map(item => {
-            const active = router.pathname === item.href
-            return (
-              <Link key={item.href} href={item.href} className={`sb-link ${active ? 'sb-active' : ''}`} onClick={() => setOpen(false)}>
-                <span className={`sb-icon ${active ? (isLi ? 'sb-icon-li' : 'sb-icon-on') : ''}`}>{item.emoji}</span>
-                <span className="sb-label">{item.label}</span>
-                {active && <span className="sb-dot" />}
-              </Link>
-            )
-          })}
+          {(['create', 'engage', 'grow', 'tune'] as const).map(section => (
+            <div key={section} className="sb-section">
+              <div className="sb-section-label">{SECTION_LABELS[section]}</div>
+              {NAV.filter(n => n.section === section).map(item => {
+                const active = router.pathname === item.href
+                return (
+                  <Link key={item.href} href={item.href} className={`sb-link ${active ? 'sb-active' : ''}`} onClick={() => setOpen(false)}>
+                    <span className={`sb-icon ${active ? (isLi ? 'sb-icon-li' : 'sb-icon-on') : ''}`}>{item.emoji}</span>
+                    <span className="sb-label">{item.label}</span>
+                    {active && <span className="sb-dot" />}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="sb-foot">Pixel Company · Brussels</div>
@@ -107,7 +128,9 @@ export default function Layout({ children, network, onNetworkChange, title, subt
         .sb-net-on { background:#27272a; color:#fafafa; }
         .sb-net-li { background:rgba(10,102,194,.15); color:#3b9eff; }
 
-        .sb-nav { flex:1; padding:8px; display:flex; flex-direction:column; gap:2px; }
+        .sb-nav { flex:1; padding:8px; display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
+        .sb-section { display:flex; flex-direction:column; gap:1px; margin-bottom:8px; }
+        .sb-section-label { font-size:9px; font-weight:700; color:#3f3f46; padding:8px 10px 4px; letter-spacing:.1em; font-family:'JetBrains Mono',monospace; }
         .sb-link { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; text-decoration:none; color:#71717a; transition:all .12s; position:relative; }
         .sb-link:hover { background:#18181b; color:#a1a1aa; }
         .sb-active { background:#18181b; color:#fafafa; }
