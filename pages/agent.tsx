@@ -437,10 +437,39 @@ export default function AgentPage() {
           return { success: true, summary: `${data.created}/${data.total} posts envoyés dans Buffer${routing}` }
         }
 
+        case 'fetch_live_trends': {
+          const limit = args.limit || 15
+          try {
+            const res = await fetch('/api/trends/live')
+            const data = await res.json()
+            if (!data.trends) return { success: false, summary: 'Aucune tendance récupérée' }
+            const top = data.trends.slice(0, limit)
+            return {
+              success: true,
+              summary: `${top.length} tendances récupérées depuis HackerNews, Product Hunt, Reddit`,
+              data: { trends: top },
+            }
+          } catch (e: any) {
+            return { success: false, summary: 'Échec fetch trends : ' + e.message }
+          }
+        }
+
         case 'plan_weekly_multi_account': {
           const days = Math.min(Math.max(args.days || 7, 1), 7)
           const startDate = args.start_date ? new Date(args.start_date) : new Date()
           const context = args.context || ''
+
+          // Auto-fetch live trends before planning
+          let liveTrendsBlock = ''
+          try {
+            const trRes = await fetch('/api/trends/live')
+            const trData = await trRes.json()
+            if (trData.trends && trData.trends.length > 0) {
+              const topTrends = trData.trends.slice(0, 12)
+              liveTrendsBlock = '\n\nACTUALITÉS LIVE (à intégrer dans les posts d\'angle insight_actualite) :\n' +
+                topTrends.map((t: any) => `- [${t.source}] ${t.title}${t.score ? ` (score ${t.score})` : ''}`).join('\n')
+            }
+          } catch {}
 
           const { getBrain } = await import('../lib/brain')
           const { sampleHooks } = await import('../lib/hooks')
@@ -535,7 +564,7 @@ export default function AgentPage() {
                 const inputText = `[Jour ${day + 1}/${days}, post ${p + 1}/${cadence.postsPerDay} sur ${channel.name}]
 Projet : ${project.name}
 Angle : ${angle} — ${angleInstruction[angle] || 'varie le sujet'}
-${context ? 'Contexte semaine : ' + context : ''}${trendsHint}${dedupHint}`
+${context ? 'Contexte semaine : ' + context : ''}${trendsHint}${liveTrendsBlock}${dedupHint}`
 
                 const promise = fetch('/api/generate', {
                   method: 'POST',
@@ -972,7 +1001,6 @@ ${context ? 'Contexte semaine : ' + context : ''}${trendsHint}${dedupHint}`
                 <div className="bubble">
                   <div className="thinking">
                     <span /><span /><span />
-                    <span className="thinking-label">Pulse réfléchit · jusqu'à 60s pour les tâches complexes</span>
                   </div>
                 </div>
               </div>
@@ -1167,18 +1195,13 @@ ${context ? 'Contexte semaine : ' + context : ''}${trendsHint}${dedupHint}`
 
           .thinking {
             display: inline-flex;
-            gap: 6px;
+            gap: 5px;
             align-items: center;
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 4px 16px 16px 16px;
-          }
-          .thinking-label {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-left: 8px;
-            font-family: var(--mono);
+            width: fit-content;
           }
           .thinking span {
             width: 6px;
@@ -1329,6 +1352,7 @@ function ActionRow({ action, onOpen }: { action: Action; onOpen: (href: string) 
     plan_by_axis: 'Calendrier par axe',
     generate_images_for_calendar: 'Images pour calendrier',
     plan_weekly_multi_account: 'Semaine complète (3 comptes × 3/jour)',
+    fetch_live_trends: 'Tendances live',
   }
   const label = labels[action.tool] || action.tool
   const ok = action.result?.success !== false

@@ -71,11 +71,14 @@ Horaires par défaut :
 
 Quand Marwane dit "planifie ma semaine" → utilise plan_weekly_multi_account qui fait les 3 comptes × 3 posts/jour × 7 jours = 63 posts en un seul shot.
 
-TENDANCES ET ACTUALITÉS
-Le brain contient une section "Tendances actuelles". Pour CHAQUE jour de planification :
-- Au moins 1 post par compte doit surfer une tendance tech récente (ex: Claude Design, GPT-5.5, lancement produit connu)
-- L'angle "insight_actualite" est dédié à ça : relier une actualité à l'expérience Marwane/Axora/Pulsa
-- Si Marwane ajoute une tendance dans /strategy, utilise-la en priorité
+TENDANCES ET ACTUALITÉS (LIVE)
+Tu as deux sources pour les tendances :
+1. Brain tendances (éditées manuellement par Marwane sur /strategy)
+2. fetch_live_trends : récupère en DIRECT les top posts de HackerNews + Product Hunt + Reddit tech
+
+plan_weekly_multi_account appelle AUTOMATIQUEMENT fetch_live_trends avant de générer.
+Pour CHAQUE jour, au moins 1 post par compte doit surfer une tendance LIVE.
+L'angle "insight_actualite" est dédié à ça : relier une actualité du jour à l'expérience Axora/Pulsa/Marwane.
 
 ANGLES DE POSTS (à appliquer selon la rotation)
 - build_in_public : feature shipped, chiffre réel, coulisse de construction (Axora ou Pulsa)
@@ -256,6 +259,20 @@ const TOOLS = [
         properties: {
           which: { type: 'string', enum: ['upcoming', 'all', 'without_image'] },
           limit: { type: 'number', description: 'Max images (défaut 10)' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'fetch_live_trends',
+      description: "Récupère les actualités/tendances tech EN DIRECT depuis HackerNews, Product Hunt et Reddit. Utilise ce tool AVANT de planifier si tu veux intégrer de vraies actualités du jour. Le résultat contient 20-30 trends fraîches.",
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Nombre max de tendances à retourner (défaut 15)' },
         },
         required: [],
       },
