@@ -474,7 +474,12 @@ export default function AgentPage() {
 
             for (let day = 0; day < days; day++) {
               for (let p = 0; p < cadence.postsPerDay; p++) {
-                const angle = cadence.angleRotation[p % cadence.angleRotation.length]
+                // Check : is this the lead magnet slot? (last post of the day marked as leadMagnetDay)
+                const isLeadMagnetDay = cadence.leadMagnetDay && (day + 1) === cadence.leadMagnetDay
+                const isLastPostOfDay = p === cadence.postsPerDay - 1
+                const isLeadMagnet = isLeadMagnetDay && isLastPostOfDay
+
+                const angle = isLeadMagnet ? 'lead_magnet' : cadence.angleRotation[p % cadence.angleRotation.length]
                 const time = cadence.times[p] || '10:00'
                 // Rotate project for this channel if projectMix is set
                 const projectId = cadence.projectMix
@@ -491,6 +496,7 @@ export default function AgentPage() {
                   engagement_question: net === 'twitter' ? 'engagement_bait' : 'debate_li',
                   hot_take: net === 'twitter' ? 'hot_take' : 'debate_li',
                   personal_story: net === 'twitter' ? 'storytelling' : 'storytelling_li',
+                  lead_magnet: net === 'twitter' ? 'engagement_bait' : 'lead_magnet',
                 }
                 const format = formatByAngle[angle] || (net === 'twitter' ? 'raw_build' : 'storytelling_li')
 
@@ -502,6 +508,18 @@ export default function AgentPage() {
                 const framework = liFrameworks[(day * cadence.postsPerDay + p) % Math.max(1, liFrameworks.length)]?.id
 
                 // Build topic instruction
+                const leadMagnetByProject: Record<string, string> = {
+                  axora: `Guide/checklist sur l'achat ou la vente d'entreprises. Ex: "Comment évaluer la vraie valeur d'une boîte en 7 points", "Checklist due diligence avant acquisition", "Template pitch deck pour vendre son business".`,
+                  pulsa: `Ressource sur les sites web qui convertissent. Ex: "Checklist d'un site web qui convertit", "Template de landing page", "Les 10 erreurs à éviter sur son site".`,
+                  personal: `Framework/ressource perso de Marwane. Ex: "Ma routine pour gérer 2 business", "Mon workflow content", "Template de calendrier de posts".`,
+                }
+                const leadMagnetInstruction = `LEAD MAGNET (post final de cycle — CONVERTIT l'engagement des 6 jours en leads) :
+- Type de ressource : ${cadence.leadMagnetType || 'guide'}
+- Sujet suggéré : ${leadMagnetByProject[project.id] || leadMagnetByProject.axora}
+- Structure : Hook fort + 80% valeur partagée dans le post + 20% en bonus téléchargeable
+- CTA obligatoire : "Commente [MOT-CLÉ] et je t'envoie [la ressource] en DM" ou "Like + commente [MOT-CLÉ] pour recevoir le PDF"
+- Le MOT-CLÉ doit être simple et mémorable (ex: AXORA, GUIDE, TEMPLATE, PULSA)`
+
                 const angleInstruction: Record<string, string> = {
                   build_in_public: `Montre une coulisse concrète / feature / chiffre de ${project.name}. Building in public, zéro bullshit.`,
                   build_in_public_mix: `Montre une coulisse de ${project.name} (${project.pitch.slice(0, 80)}).`,
@@ -509,6 +527,7 @@ export default function AgentPage() {
                   engagement_question: `Pose une question ouverte sur ${project.name} qui force une réponse. Bonus si l'audience peut partager son expérience.`,
                   hot_take: `Opinion tranchée sur ${project.name === 'Axora' ? 'le marché de l\'acquisition d\'entreprises' : project.name === 'Pulsa Creatives' ? 'la création de sites web' : 'l\'entrepreneuriat'}. Défendable mais contrariante.`,
                   personal_story: `Anecdote perso de Marwane qui montre son quotidien entre ses 2 projets. Touche humaine.`,
+                  lead_magnet: leadMagnetInstruction,
                 }
 
                 const inputText = `[Jour ${day + 1}/${days}, post ${p + 1}/${cadence.postsPerDay} sur ${channel.name}]
@@ -538,7 +557,7 @@ ${context ? 'Contexte semaine : ' + context : ''}${trendsHint}${dedupHint}`
                   return {
                     network: net,
                     format,
-                    topic: `[${project.name}] ${angle}`,
+                    topic: isLeadMagnet ? `[LEAD MAGNET · ${project.name}]` : `[${project.name}] ${angle}`,
                     text: post.text,
                     scheduledAt: scheduledAt.toISOString(),
                     status: 'scheduled' as const,

@@ -51,6 +51,19 @@ Par défaut, tu planifies 3 POSTS PAR JOUR PAR COMPTE :
 - Marwane LinkedIn perso : 3 posts/jour. Rotation Axora (2×) + Pulsa (1×) en général. Angles : build_in_public_mix + personal_story + engagement_question.
 - mrwn_one Twitter : 3 posts/jour. Alternance Axora + Pulsa + perso. Angles : hot_take + build_in_public + engagement_question.
 
+LEAD MAGNET (CRITIQUE)
+Chaque semaine, le DERNIER post de chaque compte (dimanche 18h/17h30/19h selon le channel) = LEAD MAGNET.
+Pourquoi : les 6 premiers jours construisent l'audience + l'engagement. Sans lead magnet à la fin, tout est perdu — les gens commentent et on les récupère pas. Le lead magnet CONVERTIT l'engagement en leads (DM, emails).
+Structure d'un lead magnet :
+1. Hook ultra-fort (curiosité / résultat concret)
+2. Valeur donnée directement dans le post (80% du contenu)
+3. Offre du bonus téléchargeable (checklist PDF, template, guide complet)
+4. CTA explicite : "Commente AXORA et je t'envoie la checklist complète en DM"
+Par compte :
+- axora-app → lead magnet sur acheter/vendre des entreprises
+- Marwane LI → framework perso ou ressource mixte Axora/Pulsa
+- Twitter → template/thread-ressource à DM
+
 Horaires par défaut :
 - axora-app : 9h, 13h, 18h
 - Marwane LI perso : 8h30, 12h30, 17h30

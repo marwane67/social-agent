@@ -45,6 +45,8 @@ export type CadenceRule = {
   times: string[]                   // ex: ["09:00", "13:00", "18:00"]
   angleRotation: string[]           // ex: ["build_in_public", "insight_actualite", "engagement_question"]
   projectMix?: string[]             // pour channels multi-projet : rotation des projets
+  leadMagnetDay?: number            // jour du cycle (1-7) où le dernier post devient un lead magnet
+  leadMagnetType?: 'checklist' | 'template' | 'guide' | 'audit' | 'framework'
 }
 
 export type Brain = {
@@ -184,13 +186,17 @@ export const DEFAULT_BRAIN: Brain = {
       postsPerDay: 3,
       times: ['09:00', '13:00', '18:00'],
       angleRotation: ['build_in_public', 'insight_actualite', 'engagement_question'],
+      leadMagnetDay: 7,                          // Dernier post de la semaine (dimanche 18h) = lead magnet
+      leadMagnetType: 'guide',                   // Guide/checklist sur l'acquisition d'entreprises
     },
     {
       channelId: '69d7fe5a031bfa423ce86b5f',   // Marwane LinkedIn perso
       postsPerDay: 3,
       times: ['08:30', '12:30', '17:30'],
       angleRotation: ['build_in_public_mix', 'personal_story', 'engagement_question'],
-      projectMix: ['axora', 'pulsa', 'axora'], // rotation jour par jour : 2 posts Axora + 1 Pulsa
+      projectMix: ['axora', 'pulsa', 'axora'],
+      leadMagnetDay: 7,                          // Dernier post = lead magnet
+      leadMagnetType: 'framework',               // Framework/template (mix Axora + Pulsa)
     },
     {
       channelId: '69d7fead031bfa423ce86cda',   // mrwn_one Twitter
@@ -198,6 +204,8 @@ export const DEFAULT_BRAIN: Brain = {
       times: ['10:00', '14:00', '19:00'],
       angleRotation: ['hot_take', 'build_in_public', 'engagement_question'],
       projectMix: ['axora', 'pulsa', 'axora'],
+      leadMagnetDay: 7,
+      leadMagnetType: 'template',                // Template/ressource téléchargeable
     },
   ],
 
@@ -306,5 +314,16 @@ ${cadenceStr}
 - "insight_actualite" : tendance tech intégrée à ton expérience (ex: Claude Design, GPT-5.5)
 - "engagement_question" : question ouverte qui génère des commentaires
 - "hot_take" : opinion tranchée qui fait réagir
-- "personal_story" : anecdote perso qui résonne pro`
+- "personal_story" : anecdote perso qui résonne pro
+- "lead_magnet" : post final du cycle qui CONVERTIT l'engagement en leads (voir règle ci-dessous)
+
+## Stratégie LEAD MAGNET (CRITIQUE)
+À la fin de chaque cycle de 7 jours, le DERNIER post de chaque compte (dimanche 18h par défaut) doit être un LEAD MAGNET :
+- Format : 80% de valeur donnée directement dans le post + 20% en bonus téléchargeable
+- CTA explicite : "Commente AXORA et je t'envoie le guide complet en DM" / "Like + commente TEMPLATE pour recevoir le PDF"
+- Type selon channel :
+  * axora-app → "guide" (Guide acheter/vendre son entreprise, Checklist due diligence, Template pitch deck)
+  * Marwane LI perso → "framework" (Mon framework pour gérer 2 business, Ma routine content, Template de landing page Pulsa)
+  * Twitter → "template" (Thread ressource, PDF à récupérer en DM)
+- Le lead magnet RÉCUPÈRE les leads générés par les 6 jours d'engagement précédents. Sans lui, tout est perdu.`
 }
