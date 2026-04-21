@@ -209,7 +209,18 @@ export function getBrain(): Brain {
   if (typeof window === 'undefined') return DEFAULT_BRAIN
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const saved = JSON.parse(raw)
+      // Auto-migrate : fill missing fields with defaults (for old saved brains)
+      return {
+        projects: saved.projects || DEFAULT_BRAIN.projects,
+        channels: saved.channels || DEFAULT_BRAIN.channels,
+        axes: saved.axes || DEFAULT_BRAIN.axes,
+        trends: saved.trends || DEFAULT_BRAIN.trends,
+        cadence: saved.cadence || DEFAULT_BRAIN.cadence,
+        lastUpdated: saved.lastUpdated || DEFAULT_BRAIN.lastUpdated,
+      }
+    }
   } catch {}
   return DEFAULT_BRAIN
 }
