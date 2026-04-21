@@ -17,12 +17,12 @@ type Msg = {
 }
 
 const SUGGESTIONS = [
-  { label: 'Semaine Axora avec images', prompt: 'Planifie-moi 7 jours de posts Axora avec images, thème building in public de la marketplace' },
-  { label: 'Semaine Pulsa (sites web)', prompt: 'Planifie 7 jours de posts Pulsa sur LinkedIn, montre les sites web que je livre, avec images' },
-  { label: 'Semaine perso', prompt: 'Planifie 7 jours de contenu personnel sur LinkedIn et Twitter, thème mon quotidien d\'entrepreneur entre Pulsa et Axora' },
-  { label: 'Images pour existants', prompt: 'Génère des images pour tous mes posts planifiés qui n\'en ont pas encore' },
+  { label: 'Semaine complète (3 comptes × 3/jour)', prompt: 'Planifie ma semaine complète : 3 posts par jour sur les 3 comptes (axora-app, Marwane LI, Twitter), 7 jours, avec les tendances actuelles' },
+  { label: '3 jours complets avec images', prompt: 'Planifie 3 jours complets sur les 3 comptes, 3 posts/jour chacun, avec images' },
+  { label: 'Images pour posts existants', prompt: 'Génère des images pour tous mes posts planifiés qui n\'en ont pas encore' },
   { label: 'Brief du jour', prompt: 'Donne-moi le brief du jour avec 5 idées de posts' },
   { label: 'Mes performances', prompt: 'Analyse mes performances et dis-moi ce qui marche le mieux' },
+  { label: 'Mettre à jour tendances', prompt: 'Rappelle-moi comment ajouter des tendances actuelles dans le brain' },
 ]
 
 type Resources = {
@@ -433,6 +433,188 @@ export default function AgentPage() {
           }
           const routing = forcedProfileIds ? ` (routé vers ${forcedProfileIds.length} channel(s))` : ''
           return { success: true, summary: `${data.created}/${data.total} posts envoyés dans Buffer${routing}` }
+        }
+
+        case 'plan_weekly_multi_account': {
+          const days = Math.min(Math.max(args.days || 7, 1), 7)
+          const startDate = args.start_date ? new Date(args.start_date) : new Date()
+          const context = args.context || ''
+
+          const { getBrain } = await import('../lib/brain')
+          const { sampleHooks } = await import('../lib/hooks')
+          const { frameworksFor } = await import('../lib/frameworks')
+          const { computeInsights, insightsAsPromptBlock, getPerformances } = await import('../lib/performance')
+          const { getEntries } = await import('../lib/calendar')
+
+          const brain = getBrain()
+
+          let voiceProfile: any = null
+          try {
+            const vp = localStorage.getItem('voice-profile')
+            if (vp) voiceProfile = JSON.parse(vp)
+          } catch {}
+
+          const insights = computeInsights(getPerformances())
+          const perfBlock = insights.totalPosts >= 5 ? insightsAsPromptBlock(insights) : undefined
+
+          const recentTopics = getEntries().slice(-30).map(e => (e.topic || '').slice(0, 40)).filter(Boolean).join(' | ')
+          const dedupHint = recentTopics ? `\n\nÉVITE ces sujets déjà planifiés récemment : ${recentTopics}` : ''
+
+          // Build trend string
+          const trendsStr = (brain.trends || []).map(t => `"${t.title}" (${t.description})`).join(' | ')
+          const trendsHint = trendsStr ? `\n\nTENDANCES À SURFER : ${trendsStr}. Intègre au moins 1 de ces tendances par jour et par compte.` : ''
+
+          // Build requests for all channels × days × posts_per_day
+          const requests: Promise<any>[] = []
+
+          for (const cadence of brain.cadence || []) {
+            const channel = brain.channels.find(c => c.id === cadence.channelId)
+            if (!channel) continue
+            const net: 'twitter' | 'linkedin' = channel.service === 'twitter' ? 'twitter' : 'linkedin'
+
+            for (let day = 0; day < days; day++) {
+              for (let p = 0; p < cadence.postsPerDay; p++) {
+                const angle = cadence.angleRotation[p % cadence.angleRotation.length]
+                const time = cadence.times[p] || '10:00'
+                // Rotate project for this channel if projectMix is set
+                const projectId = cadence.projectMix
+                  ? cadence.projectMix[(day * cadence.postsPerDay + p) % cadence.projectMix.length]
+                  : channel.projects[0]
+                const project = brain.projects.find(pr => pr.id === projectId)
+                if (!project) continue
+
+                // Format selection based on angle
+                const formatByAngle: Record<string, string> = {
+                  build_in_public: net === 'twitter' ? 'raw_build' : 'transparency',
+                  build_in_public_mix: net === 'twitter' ? 'raw_build' : 'transparency',
+                  insight_actualite: net === 'twitter' ? 'hot_take' : 'thought_leadership',
+                  engagement_question: net === 'twitter' ? 'engagement_bait' : 'debate_li',
+                  hot_take: net === 'twitter' ? 'hot_take' : 'debate_li',
+                  personal_story: net === 'twitter' ? 'storytelling' : 'storytelling_li',
+                }
+                const format = formatByAngle[angle] || (net === 'twitter' ? 'raw_build' : 'storytelling_li')
+
+                // Pick hook
+                const hook = sampleHooks(1)[0]
+
+                // Pick framework for LinkedIn long form
+                const liFrameworks = net === 'linkedin' ? frameworksFor('linkedin') : []
+                const framework = liFrameworks[(day * cadence.postsPerDay + p) % Math.max(1, liFrameworks.length)]?.id
+
+                // Build topic instruction
+                const angleInstruction: Record<string, string> = {
+                  build_in_public: `Montre une coulisse concrète / feature / chiffre de ${project.name}. Building in public, zéro bullshit.`,
+                  build_in_public_mix: `Montre une coulisse de ${project.name} (${project.pitch.slice(0, 80)}).`,
+                  insight_actualite: `Relie une tendance tech actuelle à l'expérience Marwane/${project.name}. Intègre une tendance du brain si pertinent.`,
+                  engagement_question: `Pose une question ouverte sur ${project.name} qui force une réponse. Bonus si l'audience peut partager son expérience.`,
+                  hot_take: `Opinion tranchée sur ${project.name === 'Axora' ? 'le marché de l\'acquisition d\'entreprises' : project.name === 'Pulsa Creatives' ? 'la création de sites web' : 'l\'entrepreneuriat'}. Défendable mais contrariante.`,
+                  personal_story: `Anecdote perso de Marwane qui montre son quotidien entre ses 2 projets. Touche humaine.`,
+                }
+
+                const inputText = `[Jour ${day + 1}/${days}, post ${p + 1}/${cadence.postsPerDay} sur ${channel.name}]
+Projet : ${project.name}
+Angle : ${angle} — ${angleInstruction[angle] || 'varie le sujet'}
+${context ? 'Contexte semaine : ' + context : ''}${trendsHint}${dedupHint}`
+
+                const promise = fetch('/api/generate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    input: inputText,
+                    format,
+                    network: net,
+                    voiceProfile,
+                    performanceInsights: perfBlock,
+                    hookId: hook?.id,
+                    framework,
+                  }),
+                }).then(r => r.json()).then(data => {
+                  const post = data.posts?.[0]
+                  if (!post) return null
+                  const scheduledAt = new Date(startDate)
+                  scheduledAt.setDate(scheduledAt.getDate() + day)
+                  const [hh, mm] = time.split(':').map(Number)
+                  scheduledAt.setHours(hh, mm, 0, 0)
+                  return {
+                    network: net,
+                    format,
+                    topic: `[${project.name}] ${angle}`,
+                    text: post.text,
+                    scheduledAt: scheduledAt.toISOString(),
+                    status: 'scheduled' as const,
+                    hookId: hook?.id,
+                    framework,
+                    channelId: channel.id,
+                    projectId: project.id,
+                  }
+                }).catch(() => null)
+
+                requests.push(promise)
+              }
+            }
+          }
+
+          const results = (await Promise.all(requests)).filter((r: any): r is NonNullable<typeof r> => !!r)
+
+          if (results.length === 0) {
+            return { success: false, summary: 'Échec — aucune cadence configurée dans le brain ou génération plantée.' }
+          }
+
+          // Optional images generation
+          if (args.with_images) {
+            const imgResults = await Promise.all(results.map(async (r: any) => {
+              try {
+                const res = await fetch('/api/post-image', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ postText: r.text, style: 'modern' }),
+                })
+                const d = await res.json()
+                if (d.url) r.imageUrl = d.url
+              } catch {}
+              return r
+            }))
+          }
+
+          saveBatch(results)
+
+          // Auto-publish to Buffer by channel
+          let bufferMsg = ''
+          if (args.publish_to_buffer !== false) {
+            try {
+              // Group by channelId
+              const byChannel: Record<string, any[]> = {}
+              for (const r of results) {
+                if (!byChannel[r.channelId]) byChannel[r.channelId] = []
+                byChannel[r.channelId].push(r)
+              }
+              let totalCreated = 0
+              let totalFailed = 0
+              for (const [chId, entries] of Object.entries(byChannel)) {
+                const res = await fetch('/api/buffer/schedule', {
+                  method: 'POST',
+                  headers: (() => {
+                    const h: Record<string, string> = { 'Content-Type': 'application/json' }
+                    try {
+                      const t = localStorage.getItem('buffer-user-token')
+                      if (t) h['x-buffer-token'] = t
+                    } catch {}
+                    return h
+                  })(),
+                  body: JSON.stringify({ entries, profileIds: [chId] }),
+                })
+                const d = await res.json()
+                if (res.ok) { totalCreated += d.created || 0; totalFailed += d.failed || 0 }
+              }
+              bufferMsg = ` · Buffer : ${totalCreated} uploadés${totalFailed > 0 ? ` (${totalFailed} échecs)` : ''}`
+            } catch {
+              bufferMsg = ' · Buffer indisponible'
+            }
+          }
+
+          return {
+            success: true,
+            summary: `${results.length} posts planifiés sur ${brain.cadence.length} comptes × ${days} jours.${bufferMsg}`,
+          }
         }
 
         case 'generate_images_for_calendar': {
@@ -1125,6 +1307,7 @@ function ActionRow({ action, onOpen }: { action: Action; onOpen: (href: string) 
     send_to_buffer: 'Envoi Buffer',
     plan_by_axis: 'Calendrier par axe',
     generate_images_for_calendar: 'Images pour calendrier',
+    plan_weekly_multi_account: 'Semaine complète (3 comptes × 3/jour)',
   }
   const label = labels[action.tool] || action.tool
   const ok = action.result?.success !== false

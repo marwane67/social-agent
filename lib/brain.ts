@@ -32,10 +32,27 @@ export type Axis = {
   frequency: string                 // ex: "3x/semaine", "daily"
 }
 
+export type Trend = {
+  id: string
+  title: string                     // ex: "GPT-5.5 sortie"
+  description: string               // contexte, pourquoi c'est pertinent
+  addedAt: string
+}
+
+export type CadenceRule = {
+  channelId: string                 // Buffer channel ID
+  postsPerDay: number               // 3 par défaut
+  times: string[]                   // ex: ["09:00", "13:00", "18:00"]
+  angleRotation: string[]           // ex: ["build_in_public", "insight_actualite", "engagement_question"]
+  projectMix?: string[]             // pour channels multi-projet : rotation des projets
+}
+
 export type Brain = {
   projects: Project[]
   channels: Channel[]
   axes: Axis[]
+  trends: Trend[]                   // tendances actuelles à surfer
+  cadence: CadenceRule[]            // règles de publication par channel
   lastUpdated: string
 }
 
@@ -48,16 +65,17 @@ export const DEFAULT_BRAIN: Brain = {
       id: 'axora',
       name: 'Axora',
       status: 'Lancé avril 2026 — building in public',
-      pitch: "Marketplace pour acheter et vendre des entreprises. Francophone (BE/FR). Pour entrepreneurs qui veulent reprendre un business existant ou revendre le leur.",
-      audience: 'Entrepreneurs, repreneurs, vendeurs d\'entreprises en Belgique et France',
+      pitch: "LA plus grande marketplace francophone pour acheter et vendre des entreprises. TOUS types : digitales, physiques, SaaS, e-commerce, services. Transmission d'entreprises moderne, transparente, avec annonces vérifiées.",
+      audience: 'Entrepreneurs, repreneurs, vendeurs d\'entreprises (tous secteurs) en Belgique et France',
       key_messages: [
-        'Acheter une entreprise est plus simple que de la créer — Axora le prouve',
-        'Le marché de la transmission d\'entreprises francophone est opaque — Axora apporte la transparence',
-        'Chaque annonce est vérifiée, les chiffres sont réels',
-        'Building in public : on montre la construction de la plateforme',
+        'Axora couvre TOUS les types de business : SaaS, e-commerce, physique, services, digital',
+        'Acheter une entreprise rentable est plus malin que de tout créer de zéro',
+        'Le marché francophone de la transmission est opaque — Axora apporte la transparence',
+        'Annonces vérifiées, chiffres réels, process clair',
+        'Building in public : on montre chaque feature, chaque stat, chaque deal',
       ],
-      tone: 'Building in public — cash, transparent, chiffres réels, storytelling de construction de la plateforme',
-      cta: 'Découvre Axora / rejoins la plateforme',
+      tone: 'Building in public — cash, transparent, chiffres réels, hype autour des features shippées',
+      cta: 'Découvre Axora / parcours les entreprises à vendre',
     },
     {
       id: 'pulsa',
@@ -145,6 +163,44 @@ export const DEFAULT_BRAIN: Brain = {
     },
   ],
 
+  trends: [
+    {
+      id: 'default-1',
+      title: 'Claude Design (Anthropic)',
+      description: 'Nouvelle capacité de Claude à générer du design/Canva. Parler de l\'impact sur les agences créatives et les founders.',
+      addedAt: new Date().toISOString(),
+    },
+    {
+      id: 'default-2',
+      title: 'M&A tech en 2026',
+      description: 'Hausse des rachats d\'entreprises digitales. Le marché de l\'acquisition se démocratise (contexte pour Axora).',
+      addedAt: new Date().toISOString(),
+    },
+  ],
+
+  cadence: [
+    {
+      channelId: '69d7fe5a031bfa423ce86b5e',   // axora-app LinkedIn
+      postsPerDay: 3,
+      times: ['09:00', '13:00', '18:00'],
+      angleRotation: ['build_in_public', 'insight_actualite', 'engagement_question'],
+    },
+    {
+      channelId: '69d7fe5a031bfa423ce86b5f',   // Marwane LinkedIn perso
+      postsPerDay: 3,
+      times: ['08:30', '12:30', '17:30'],
+      angleRotation: ['build_in_public_mix', 'personal_story', 'engagement_question'],
+      projectMix: ['axora', 'pulsa', 'axora'], // rotation jour par jour : 2 posts Axora + 1 Pulsa
+    },
+    {
+      channelId: '69d7fead031bfa423ce86cda',   // mrwn_one Twitter
+      postsPerDay: 3,
+      times: ['10:00', '14:00', '19:00'],
+      angleRotation: ['hot_take', 'build_in_public', 'engagement_question'],
+      projectMix: ['axora', 'pulsa', 'axora'],
+    },
+  ],
+
   lastUpdated: new Date().toISOString(),
 }
 
@@ -201,6 +257,16 @@ export function brainAsPromptBlock(brain: Brain): string {
     `  • ${a.name} — ${a.description}\n    Fréquence: ${a.frequency}\n    Channels: ${a.channels.join(', ')}`
   ).join('\n\n')
 
+  const trendsStr = (brain.trends || []).length > 0
+    ? brain.trends.map(t => `  • ${t.title} — ${t.description}`).join('\n')
+    : '  (aucune tendance configurée — à remplir dans /strategy)'
+
+  const cadenceStr = (brain.cadence || []).map(c => {
+    const channel = brain.channels.find(ch => ch.id === c.channelId)
+    const name = channel?.name || c.channelId
+    return `  • ${name} : ${c.postsPerDay} posts/jour à ${c.times.join(', ')} — angles : ${c.angleRotation.join(' > ')}${c.projectMix ? ` — rotation projets : ${c.projectMix.join(', ')}` : ''}`
+  }).join('\n')
+
   return `═══ BRAIN — STRATÉGIE DE MARWANE ═══
 
 ## Projets actifs
@@ -212,10 +278,22 @@ ${channelsStr}
 ## Axes de contenu
 ${axesStr}
 
+## Tendances actuelles à surfer (intègre-les dans les posts quand pertinent)
+${trendsStr}
+
+## Règles de cadence (3 posts/jour/compte par défaut)
+${cadenceStr}
+
 ## Règles de routing (CRITIQUE)
-- Quand tu planifies ou envoies un post, choisis le(s) bon(s) channel(s) selon le projet/axe
 - JAMAIS Pulsa sur axora-app (channel dédié à Axora uniquement)
-- JAMAIS Pulsa sur Twitter personnel (mrwn_one = Axora + perso uniquement)
+- Sur Twitter (mrwn_one) : alterner Axora + Pulsa + perso (pas de Pulsa interdit)
+- Sur Marwane LinkedIn perso : mix Axora + Pulsa (ratio typique 2 Axora pour 1 Pulsa, configurable)
 - Axora peut aller sur les 3 channels
-- Personal/thought leadership sur Twitter + LinkedIn Marwane (pas axora-app)`
+
+## Angle de chaque post
+- "build_in_public" : feature shipped, chiffre, coulisse de construction
+- "insight_actualite" : tendance tech intégrée à ton expérience (ex: Claude Design, GPT-5.5)
+- "engagement_question" : question ouverte qui génère des commentaires
+- "hot_take" : opinion tranchée qui fait réagir
+- "personal_story" : anecdote perso qui résonne pro`
 }

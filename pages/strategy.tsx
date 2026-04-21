@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Layout from '../components/Layout'
-import { Brain, Project, Channel, Axis, getBrain, saveBrain, resetBrain, DEFAULT_BRAIN } from '../lib/brain'
+import { Brain, Project, Channel, Axis, Trend, getBrain, saveBrain, resetBrain, DEFAULT_BRAIN } from '../lib/brain'
 
-type Tab = 'projects' | 'channels' | 'axes'
+type Tab = 'projects' | 'channels' | 'axes' | 'trends'
 
 export default function StrategyPage() {
   const [brain, setBrain] = useState<Brain>(DEFAULT_BRAIN)
@@ -123,6 +123,9 @@ export default function StrategyPage() {
           </button>
           <button className={`tab ${tab === 'axes' ? 'on' : ''}`} onClick={() => setTab('axes')}>
             Axes <span className="count">{brain.axes.length}</span>
+          </button>
+          <button className={`tab ${tab === 'trends' ? 'on' : ''}`} onClick={() => setTab('trends')}>
+            Tendances <span className="count">{brain.trends?.length || 0}</span>
           </button>
         </div>
 
@@ -249,7 +252,86 @@ export default function StrategyPage() {
           </div>
         )}
 
+        {/* TRENDS */}
+        {tab === 'trends' && (
+          <div className="list">
+            <div className="trends-intro">
+              Ajoute ici les tendances tech ou business du moment (ex: "Claude Design", "GPT-5.5", "lancement Vercel AI 3.0"). Pulse les intègre dans au moins 1 post par jour par compte, via l'angle <strong>insight_actualite</strong>.
+            </div>
+            {(brain.trends || []).map((t, i) => (
+              <div key={i} className="card">
+                <div className="card-head">
+                  <input
+                    className="title-input"
+                    value={t.title}
+                    placeholder="Titre de la tendance"
+                    onChange={e => {
+                      const trends = [...(brain.trends || [])]
+                      trends[i] = { ...trends[i], title: e.target.value }
+                      setBrain({ ...brain, trends })
+                      setDirty(true)
+                    }}
+                  />
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                    ajouté {new Date(t.addedAt).toLocaleDateString('fr-FR')}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setBrain({ ...brain, trends: (brain.trends || []).filter((_, j) => j !== i) })
+                      setDirty(true)
+                    }}
+                    className="del-btn"
+                  >×</button>
+                </div>
+                <textarea
+                  value={t.description}
+                  placeholder="Pourquoi c'est pertinent, comment l'utiliser dans un post, angle..."
+                  onChange={e => {
+                    const trends = [...(brain.trends || [])]
+                    trends[i] = { ...trends[i], description: e.target.value }
+                    setBrain({ ...brain, trends })
+                    setDirty(true)
+                  }}
+                  rows={2}
+                  style={{
+                    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--r-sm)', color: 'var(--text)', fontSize: 13, padding: '8px 10px',
+                    fontFamily: 'var(--font)', lineHeight: 1.5, resize: 'vertical',
+                  }}
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                setBrain({
+                  ...brain,
+                  trends: [...(brain.trends || []), {
+                    id: 'trend_' + Date.now(),
+                    title: 'Nouvelle tendance',
+                    description: '',
+                    addedAt: new Date().toISOString(),
+                  }],
+                })
+                setDirty(true)
+              }}
+              className="add-btn"
+            >+ Ajouter une tendance</button>
+          </div>
+        )}
+
         <style jsx>{`
+          .trends-intro {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--net);
+            border-radius: var(--r-md);
+            padding: 12px 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 10px;
+          }
+          .trends-intro strong { color: var(--text); font-family: var(--mono); }
           .save-bar {
             position: sticky;
             top: 0;
