@@ -236,11 +236,72 @@ export function getBrain(): Brain {
 export function saveBrain(brain: Brain) {
   brain.lastUpdated = new Date().toISOString()
   localStorage.setItem(KEY, JSON.stringify(brain))
+  // Background sync to Supabase — fire-and-forget, never blocks the UI
+  syncToCloud(brain).catch(() => {})
 }
 
 export function resetBrain(): Brain {
-  localStorage.setItem(KEY, JSON.stringify(DEFAULT_BRAIN))
-  return DEFAULT_BRAIN
+  const reset = { ...DEFAULT_BRAIN, lastUpdated: new Date().toISOString() }
+  localStorage.setItem(KEY, JSON.stringify(reset))
+  syncToCloud(reset).catch(() => {})
+  return reset
+}
+
+/* === Cloud sync (Supabase) === */
+export async function syncToCloud(brain: Brain): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/brain/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brain }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { ok: false, error: data.message || data.error }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function pullFromCloud(): Promise<{ brain: Brain | null; updatedAt: string | null; error?: string }> {
+  try {
+    const res = await fetch('/api/brain/sync')
+    const data = await res.json()
+    if (!res.ok) return { brain: null, updatedAt: null, error: data.message || data.error }
+    if (!data.brain) return { brain: null, updatedAt: null, error: data.error === 'table_missing' ? 'table_missing' : undefined }
+    return { brain: data.brain, updatedAt: data.updatedAt }
+  } catch (e: any) {
+    return { brain: null, updatedAt: null, error: e.message }
+  }
+}
+
+/**
+ * Hydrate the local brain from the cloud if remote is newer than local.
+ * Call this once at app load. Returns the effective brain.
+ */
+export async function hydrateFromCloud(): Promise<Brain> {
+  const local = getBrain()
+  const { brain: remote } = await pullFromCloud()
+  if (!remote) return local
+
+  const localTime = new Date(local.lastUpdated || 0).getTime()
+  const remoteTime = new Date(remote.lastUpdated || 0).getTime()
+
+  if (remoteTime > localTime) {
+    // Remote is newer → overwrite local
+    const merged: Brain = {
+      projects: remote.projects || DEFAULT_BRAIN.projects,
+      channels: remote.channels || DEFAULT_BRAIN.channels,
+      axes: remote.axes || DEFAULT_BRAIN.axes,
+      trends: remote.trends || DEFAULT_BRAIN.trends,
+      cadence: remote.cadence || DEFAULT_BRAIN.cadence,
+      lastUpdated: remote.lastUpdated,
+    }
+    localStorage.setItem(KEY, JSON.stringify(merged))
+    return merged
+  }
+
+  return local
 }
 
 /* === Helpers for routing === */

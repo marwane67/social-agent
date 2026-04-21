@@ -1,23 +1,75 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Layout from '../components/Layout'
-import { Brain, Project, Channel, Axis, Trend, getBrain, saveBrain, resetBrain, DEFAULT_BRAIN } from '../lib/brain'
+import { Brain, Project, Channel, Axis, Trend, getBrain, saveBrain, resetBrain, DEFAULT_BRAIN, hydrateFromCloud, pullFromCloud } from '../lib/brain'
 
 type Tab = 'projects' | 'channels' | 'axes' | 'trends'
+type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'table_missing'
 
 export default function StrategyPage() {
   const [brain, setBrain] = useState<Brain>(DEFAULT_BRAIN)
   const [tab, setTab] = useState<Tab>('projects')
   const [dirty, setDirty] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
+  const [syncError, setSyncError] = useState('')
+  const [lastSynced, setLastSynced] = useState<string | null>(null)
 
-  useEffect(() => { setBrain(getBrain()) }, [])
+  useEffect(() => {
+    // Hydrate from cloud on mount (if remote is newer than local)
+    setSyncStatus('syncing')
+    hydrateFromCloud().then(b => {
+      setBrain(b)
+      setSyncStatus('synced')
+      setLastSynced(b.lastUpdated)
+    }).catch(e => {
+      setBrain(getBrain())
+      if (e.message === 'table_missing') setSyncStatus('table_missing')
+      else setSyncStatus('error')
+      setSyncError(e.message || '')
+    })
+  }, [])
+
+  const pullNow = async () => {
+    setSyncStatus('syncing')
+    const res = await pullFromCloud()
+    if (res.error === 'table_missing') {
+      setSyncStatus('table_missing')
+    } else if (res.brain) {
+      // Force overwrite local with remote
+      setBrain(res.brain)
+      setDirty(false)
+      setSyncStatus('synced')
+      setLastSynced(res.updatedAt)
+      setSavedMsg('Brain chargé depuis le cloud.')
+      setTimeout(() => setSavedMsg(''), 3000)
+    } else {
+      setSyncStatus('error')
+      setSyncError(res.error || 'Aucune donnée cloud')
+    }
+  }
 
   const save = () => {
     saveBrain(brain)
     setDirty(false)
-    setSavedMsg('✓ Stratégie sauvegardée — Pulse va l\'utiliser dès la prochaine question')
-    setTimeout(() => setSavedMsg(''), 3000)
+    setSyncStatus('syncing')
+    setSavedMsg('Sauvegardé en local · sync cloud en cours…')
+    // saveBrain triggers syncToCloud in background — we poll briefly
+    setTimeout(async () => {
+      const res = await pullFromCloud()
+      if (res.brain && res.updatedAt) {
+        setSyncStatus('synced')
+        setLastSynced(res.updatedAt)
+        setSavedMsg('Sauvegardé et synchronisé sur Supabase. Pulse l\'utilise déjà.')
+      } else if (res.error === 'table_missing') {
+        setSyncStatus('table_missing')
+        setSavedMsg('Sauvegardé en local. Table Supabase manquante — voir instructions en haut.')
+      } else {
+        setSyncStatus('error')
+        setSavedMsg('Sauvegardé en local. Sync cloud échouée : ' + (res.error || ''))
+      }
+      setTimeout(() => setSavedMsg(''), 4000)
+    }, 700)
   }
 
   const reset = () => {
@@ -96,16 +148,37 @@ export default function StrategyPage() {
     <>
       <Head><title>Stratégie — Social Agent</title></Head>
       <Layout title="Stratégie" subtitle="Le brain de Pulse : projets, channels, axes de contenu">
+        {/* Table missing warning */}
+        {syncStatus === 'table_missing' && (
+          <div className="table-warn">
+            <strong>Table Supabase manquante.</strong> Exécute ce SQL dans ton Supabase (SQL Editor) pour activer le cloud sync :
+            <pre className="sql">{`create table if not exists app_state (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz default now()
+);`}</pre>
+            Puis recharge cette page. En attendant, le brain reste stocké en local (localStorage).
+          </div>
+        )}
+
         {/* Save bar */}
         <div className="save-bar">
           <div className="save-status">
             {dirty ? (
-              <span className="dirty">● Modifications non sauvegardées</span>
+              <span className="dirty">Modifications non sauvegardées</span>
             ) : (
               <span className="clean">Dernière maj : {new Date(brain.lastUpdated).toLocaleString('fr-FR')}</span>
             )}
+            <span className={`sync-pill sync-${syncStatus}`}>
+              {syncStatus === 'synced' && 'Cloud ✓'}
+              {syncStatus === 'syncing' && 'Cloud…'}
+              {syncStatus === 'error' && 'Cloud × ' + (syncError.slice(0, 40))}
+              {syncStatus === 'table_missing' && 'Cloud (table manquante)'}
+              {syncStatus === 'idle' && 'Cloud —'}
+            </span>
           </div>
           <div className="save-actions">
+            <button onClick={pullNow} className="ghost-btn" title="Récupérer la dernière version du cloud">Pull</button>
             <button onClick={reset} className="ghost-btn">Reset par défaut</button>
             <button onClick={save} disabled={!dirty} className="save-btn">Sauvegarder</button>
           </div>
@@ -344,8 +417,39 @@ export default function StrategyPage() {
             z-index: 20;
             border-bottom: 1px solid var(--border);
           }
+          .save-status { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
           .save-status .dirty { color: var(--warning); font-size: 12px; font-family: var(--mono); }
           .save-status .clean { color: var(--text-muted); font-size: 11px; font-family: var(--mono); }
+          .sync-pill { font-size: 10px; padding: 2px 8px; border-radius: 100px; font-family: var(--mono); font-weight: 600; }
+          .sync-synced { background: rgba(74,222,128,0.1); color: var(--success); border: 1px solid rgba(74,222,128,0.3); }
+          .sync-syncing { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); animation: pulse-soft 1.5s ease-in-out infinite; }
+          .sync-error, .sync-table_missing { background: rgba(239,68,68,0.08); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+          .sync-idle { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); }
+
+          .table-warn {
+            background: rgba(251,191,36,0.08);
+            border: 1px solid rgba(251,191,36,0.3);
+            border-left: 3px solid var(--warning);
+            border-radius: var(--r-md);
+            padding: 14px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 14px;
+          }
+          .table-warn strong { color: var(--warning); }
+          .sql {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            padding: 10px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text);
+            overflow-x: auto;
+            margin: 10px 0;
+            line-height: 1.5;
+          }
           .save-actions { display: flex; gap: 6px; }
           .ghost-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 11px; padding: 6px 12px; border-radius: var(--r-sm); font-family: var(--mono); }
           .ghost-btn:hover { color: var(--danger); border-color: var(--danger); }

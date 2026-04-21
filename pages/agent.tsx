@@ -57,7 +57,9 @@ export default function AgentPage() {
         const { HOOKS } = await import('../lib/hooks')
         const { FRAMEWORKS } = await import('../lib/frameworks')
         const { getEntries } = await import('../lib/calendar')
-        const { getBrain } = await import('../lib/brain')
+        const { getBrain, hydrateFromCloud } = await import('../lib/brain')
+        // Hydrate from cloud if remote is newer (fire and forget, non blocking for UI render)
+        hydrateFromCloud().catch(() => {})
         const brain = getBrain()
         const vp = localStorage.getItem('voice-profile')
         let perfPosts = 0
