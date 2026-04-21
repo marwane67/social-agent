@@ -1,32 +1,43 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { sbAdmin } from '../../../lib/supabase'
 
-// Singleton brain for this personal app (1 user : Marwane)
-const BRAIN_KEY = 'marwane_brain'
+// Store brain as a JSON file in Supabase Storage — no SQL table needed.
+// Bucket: 'app-state' (auto-created if missing), file: 'marwane_brain.json'
+const BUCKET = 'app-state'
+const FILE = 'marwane_brain.json'
+
+async function ensureBucket(sb: ReturnType<typeof sbAdmin>) {
+  const { data: buckets } = await sb.storage.listBuckets()
+  const exists = buckets?.some(b => b.name === BUCKET)
+  if (!exists) {
+    const { error } = await sb.storage.createBucket(BUCKET, {
+      public: false,
+    })
+    if (error && !error.message.includes('already')) {
+      throw new Error('Bucket creation failed: ' + error.message)
+    }
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const sb = sbAdmin()
+    await ensureBucket(sb)
 
     if (req.method === 'GET') {
-      const { data, error } = await sb
-        .from('app_state')
-        .select('value, updated_at')
-        .eq('key', BRAIN_KEY)
-        .maybeSingle()
-
+      const { data, error } = await sb.storage.from(BUCKET).download(FILE)
       if (error) {
-        // Table might not exist yet
-        if (error.message?.includes('does not exist') || error.code === '42P01') {
-          return res.status(200).json({ brain: null, error: 'table_missing', message: 'Exécute le SQL fourni dans ton Supabase pour créer la table app_state.' })
+        // File doesn't exist yet — not an error, just empty
+        if (error.message.includes('not found') || (error as any).statusCode === '404' || error.message.includes('Object not found')) {
+          return res.status(200).json({ brain: null, updatedAt: null })
         }
         return res.status(500).json({ error: error.message })
       }
+      if (!data) return res.status(200).json({ brain: null, updatedAt: null })
 
-      return res.status(200).json({
-        brain: data?.value || null,
-        updatedAt: data?.updated_at || null,
-      })
+      const text = await data.text()
+      const brain = JSON.parse(text)
+      return res.status(200).json({ brain, updatedAt: brain.lastUpdated || null })
     }
 
     if (req.method === 'POST') {
@@ -35,25 +46,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing or invalid brain' })
       }
 
-      const { error } = await sb
-        .from('app_state')
-        .upsert({
-          key: BRAIN_KEY,
-          value: brain,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'key' })
+      const json = JSON.stringify(brain, null, 2)
+      const { error } = await sb.storage.from(BUCKET).upload(FILE, json, {
+        contentType: 'application/json',
+        upsert: true,
+      })
 
       if (error) {
-        if (error.message?.includes('does not exist') || error.code === '42P01') {
-          return res.status(500).json({
-            error: 'table_missing',
-            message: 'La table app_state n\'existe pas. Crée-la dans Supabase SQL Editor avec le SQL fourni.',
-          })
-        }
         return res.status(500).json({ error: error.message })
       }
 
-      return res.status(200).json({ ok: true, updatedAt: new Date().toISOString() })
+      return res.status(200).json({ ok: true, updatedAt: brain.lastUpdated || new Date().toISOString() })
     }
 
     return res.status(405).end()

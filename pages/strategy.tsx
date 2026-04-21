@@ -148,19 +148,6 @@ export default function StrategyPage() {
     <>
       <Head><title>Stratégie — Social Agent</title></Head>
       <Layout title="Stratégie" subtitle="Le brain de Pulse : projets, channels, axes de contenu">
-        {/* Table missing warning */}
-        {syncStatus === 'table_missing' && (
-          <div className="table-warn">
-            <strong>Table Supabase manquante.</strong> Exécute ce SQL dans ton Supabase (SQL Editor) pour activer le cloud sync :
-            <pre className="sql">{`create table if not exists app_state (
-  key text primary key,
-  value jsonb not null,
-  updated_at timestamptz default now()
-);`}</pre>
-            Puis recharge cette page. En attendant, le brain reste stocké en local (localStorage).
-          </div>
-        )}
-
         {/* Save bar */}
         <div className="save-bar">
           <div className="save-status">
@@ -170,10 +157,9 @@ export default function StrategyPage() {
               <span className="clean">Dernière maj : {new Date(brain.lastUpdated).toLocaleString('fr-FR')}</span>
             )}
             <span className={`sync-pill sync-${syncStatus}`}>
-              {syncStatus === 'synced' && 'Cloud ✓'}
+              {syncStatus === 'synced' && 'Cloud synced'}
               {syncStatus === 'syncing' && 'Cloud…'}
-              {syncStatus === 'error' && 'Cloud × ' + (syncError.slice(0, 40))}
-              {syncStatus === 'table_missing' && 'Cloud (table manquante)'}
+              {syncStatus === 'error' && 'Cloud error: ' + (syncError.slice(0, 40))}
               {syncStatus === 'idle' && 'Cloud —'}
             </span>
           </div>
