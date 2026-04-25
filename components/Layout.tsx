@@ -18,6 +18,8 @@ const MORE = [
   { href: '/strategy', label: 'Stratégie' },
   { href: '/voice', label: 'Ma voix' },
   { href: '/analytics', label: 'Performance' },
+  { href: '/signals', label: 'Signaux LinkedIn' },
+  { href: '/outreach', label: 'Outreach LinkedIn' },
   { href: '/bio', label: 'Bio' },
   { href: '/more', label: 'Tout voir' },
 ]

@@ -18,7 +18,7 @@ RÈGLES DE MESSAGES LINKEDIN :
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { name, title, company, context, goal, messageType } = req.body
+  const { name, title, company, context, goal, messageType, signal } = req.body
   if (!goal) return res.status(400).json({ error: 'Missing goal' })
 
   const types: Record<string, string> = {
@@ -61,7 +61,20 @@ Proposer un next step naturel.`,
     context && `Contexte : ${context}`,
   ].filter(Boolean).join('\n')
 
-  const prompt = `${personInfo ? `INFORMATIONS SUR LA PERSONNE :\n${personInfo}\n\n` : ''}OBJECTIF : ${goal}
+  // Bloc signal — quand le message vient d'un engagement détecté.
+  // CRITIQUE : doit être référencé EXPLICITEMENT dans le 1er message
+  // (c'est ce qui fait passer le taux d'acceptation de 10-20% à 60-70%).
+  const signalBlock = signal && (signal.source_excerpt || signal.source_account || signal.signal_type)
+    ? `\n\nSIGNAL D'ENGAGEMENT DÉTECTÉ (TRÈS IMPORTANT — référence-le dans le message) :
+- A ${signal.signal_type === 'comment' ? 'commenté' : signal.signal_type === 'share' ? 'partagé' : 'liké'} un post de ${signal.source_account || 'un compte suivi'}
+${signal.source_excerpt ? `- Sujet du post : "${signal.source_excerpt.slice(0, 300)}"` : ''}
+${signal.comment_text ? `- Son commentaire : "${signal.comment_text.slice(0, 300)}"` : ''}
+${signal.source_url ? `- URL du post : ${signal.source_url}` : ''}
+
+→ Le message DOIT mentionner CE post / CE sujet (pas générique). C'est ce qui prouve que tu es humain et pertinent.`
+    : ''
+
+  const prompt = `${personInfo ? `INFORMATIONS SUR LA PERSONNE :\n${personInfo}\n\n` : ''}OBJECTIF : ${goal}${signalBlock}
 
 TYPE DE MESSAGE :
 ${typeInstr}

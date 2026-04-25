@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Head from 'next/head'
 import Layout from '../components/Layout'
 
 type Network = 'twitter' | 'linkedin'
 type MsgType = 'connect' | 'first_dm' | 'follow_up' | 'pitch' | 'collab' | 'thank'
 type Message = { type: string; text: string; why: string }
+type SignalContext = {
+  source_url?: string | null
+  source_account?: string
+  source_excerpt?: string
+  signal_type?: string
+  comment_text?: string
+}
 
 const MSG_TYPES: { id: MsgType; label: string; desc: string }[] = [
   { id: 'connect', label: 'Demande de connexion', desc: 'Max 300 chars' },
@@ -29,6 +36,31 @@ export default function OutreachPage() {
   const [scraping, setScraping] = useState(false)
   const [scraped, setScraped] = useState(false)
   const [copied, setCopied] = useState<number | null>(null)
+  const [signal, setSignal] = useState<SignalContext | null>(null)
+
+  // Pré-remplissage depuis /signals → "Générer DM"
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const raw = sessionStorage.getItem('signal-prefill')
+    if (!raw) return
+    try {
+      const p = JSON.parse(raw)
+      if (p.name) setName(p.name)
+      if (p.title) setTitle(p.title)
+      if (p.company) setCompany(p.company)
+      if (p.context) setContext(p.context)
+      if (p.linkedinUrl) { setLinkedinUrl(p.linkedinUrl); setScraped(true) }
+      if (p.signal) {
+        setSignal(p.signal)
+        // Suggérer "first_dm" + objectif basé sur le signal
+        setMessageType('first_dm')
+        const verb = p.signal.signal_type === 'comment' ? 'commenté' : p.signal.signal_type === 'share' ? 'partagé' : 'liké'
+        const acct = p.signal.source_account || 'un post pertinent'
+        setGoal(`Engager la conversation après que cette personne a ${verb} ${acct}. Référencer le sujet du post pour montrer que je suis pertinent.`)
+      }
+      sessionStorage.removeItem('signal-prefill')
+    } catch {}
+  }, [])
 
   const scrapeProfile = async () => {
     if (!linkedinUrl.trim()) return
@@ -56,7 +88,7 @@ export default function OutreachPage() {
       const res = await fetch('/api/outreach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, title, company, context, goal, messageType }),
+        body: JSON.stringify({ name, title, company, context, goal, messageType, signal }),
       })
       const data = await res.json()
       if (data.messages) setMessages(data.messages)
@@ -72,7 +104,7 @@ export default function OutreachPage() {
 
   const reset = () => {
     setLinkedinUrl(''); setName(''); setTitle(''); setCompany(''); setContext(''); setGoal('')
-    setMessages([]); setScraped(false)
+    setMessages([]); setScraped(false); setSignal(null)
   }
 
   const currentType = MSG_TYPES.find(t => t.id === messageType)!
@@ -83,6 +115,20 @@ export default function OutreachPage() {
       <Head><title>Outreach — Marwane</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
       <Layout network={network} onNetworkChange={setNetwork} title="LinkedIn Outreach" subtitle="Colle un profil, choisis le type, c'est envoyé">
         <div className="pc">
+          {/* Signal banner — affiché quand on vient depuis /signals */}
+          {signal && (signal.source_excerpt || signal.source_account) && (
+            <div className="signal-banner">
+              <div className="signal-banner-tag">SIGNAL DÉTECTÉ</div>
+              <div className="signal-banner-text">
+                <strong>{name || 'Cette personne'}</strong> a {signal.signal_type === 'comment' ? 'commenté' : signal.signal_type === 'share' ? 'partagé' : 'liké'}
+                {signal.source_account && <> un post de <strong>{signal.source_account}</strong></>}
+              </div>
+              {signal.source_excerpt && <div className="signal-banner-excerpt">"{signal.source_excerpt.slice(0, 180)}{signal.source_excerpt.length > 180 ? '…' : ''}"</div>}
+              {signal.comment_text && <div className="signal-banner-comment">Son commentaire : "{signal.comment_text.slice(0, 180)}"</div>}
+              <div className="signal-banner-hint">Le DM va référencer ce post automatiquement.</div>
+            </div>
+          )}
+
           {/* Step 1: LinkedIn URL */}
           <div className="section">
             <label className="label">1. Colle le lien LinkedIn</label>
@@ -196,6 +242,15 @@ export default function OutreachPage() {
 
         <style jsx>{`
           .pc { display:flex; flex-direction:column; gap:14px; }
+
+          .signal-banner { background:var(--li-dim); border:1px solid var(--li-border); border-left:3px solid var(--li); border-radius:var(--radius); padding:12px 14px; }
+          .signal-banner-tag { font-size:9px; font-weight:700; color:var(--li); letter-spacing:.08em; font-family:var(--mono); margin-bottom:4px; }
+          .signal-banner-text { font-size:13px; color:var(--text); }
+          .signal-banner-text strong { font-weight:600; }
+          .signal-banner-excerpt { font-size:12px; color:var(--text-secondary); font-style:italic; margin-top:6px; padding:6px 10px; background:var(--bg); border-radius:6px; line-height:1.5; }
+          .signal-banner-comment { font-size:12px; color:var(--text); margin-top:6px; padding:6px 10px; background:var(--bg-card); border-left:2px solid var(--li); border-radius:0 6px 6px 0; line-height:1.5; }
+          .signal-banner-hint { font-size:10px; color:var(--text-muted); margin-top:8px; font-family:var(--mono); }
+
           .section { display:flex; flex-direction:column; gap:6px; }
           .label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
 
