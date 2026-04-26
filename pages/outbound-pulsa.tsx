@@ -17,7 +17,44 @@ type Account = {
 
 type SignalStats = { total: number; qualified: number; new: number; contacted: number }
 
-const SALES_NAV_SEARCH_URL = 'https://www.linkedin.com/sales/search/people'
+// Sales Nav URL avec keywords pré-remplis. Sales Nav ne supporte pas tous
+// les filtres en URL (companySize, intent, etc. nécessitent des URN LinkedIn
+// internes), donc on fait ce qu'on peut : keywords + geo. Le reste s'ajoute
+// en 30 sec via les boutons "Add filter" sur la page.
+const SALES_NAV_KEYWORDS_PULSA = '(CEO OR Founder OR Fondateur OR "Co-fondateur" OR Directeur OR CMO) (Belgique OR Belgium OR Bruxelles OR Brussels)'
+const SALES_NAV_SEARCH_URL = `https://www.linkedin.com/sales/search/people?keywords=${encodeURIComponent(SALES_NAV_KEYWORDS_PULSA)}`
+
+// Lien direct vers la page de création de saved search Sales Nav
+const SALES_NAV_SAVED_SEARCHES = 'https://www.linkedin.com/sales/search/people?savedSearchOption=true'
+
+// Bloc texte à copier-coller — l'utilisateur peut le coller dans n'importe quel
+// outil pour appliquer la config rapidement (ChatGPT, doc, etc.)
+const SALES_NAV_CONFIG_TEXT = `🎯 SALES NAVIGATOR — Recherche Pulsa
+
+ENTREPRISE
+- Effectifs : 2-10, 11-50
+- Lieu siège : Belgique (Bruxelles, Anvers, Liège, Gand, Charleroi, Mons, Namur)
+
+RÔLE
+- Niveau hiérarchique : Owner, CXO, VP, Founder
+- Fonction : Founder, Marketing, General Management, Operations
+- Intitulé poste : CEO, Fondateur, Founder, Co-fondateur, Directeur, CMO
+
+PERSONNEL
+- Zone géographique : Belgium, Brussels
+- Langue profil : Français
+
+INTENTION D'ACHAT (toggle ON)
+✓ Le compte affiche une intention
+✓ Suivent votre entreprise (Pulsa)
+✓ Vues de profil récentes
+
+NOUVELLES RÉCENTES (toggle ON)
+✓ Nouveau poste (vendor evaluation 30-60j)
+✓ Nouveau financement (cash frais)
+✓ Posts sur LinkedIn (actifs)
+
+→ Sauvegarder sous : "Pulsa — PME BE qui ont besoin d'un site"`
 
 const SALES_NAV_FILTERS_PULSA = [
   { label: 'Effectifs', value: '2-10, 11-50' },
@@ -41,6 +78,13 @@ export default function OutboundPulsaPage() {
   const [seeding, setSeeding] = useState(false)
   const [seedResult, setSeedResult] = useState('')
   const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  function copyConfig() {
+    navigator.clipboard.writeText(SALES_NAV_CONFIG_TEXT)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => { load() }, [])
 
@@ -134,7 +178,18 @@ export default function OutboundPulsaPage() {
                 <h2 className="step-title">Sales Navigator — recherche sauvegardée Pulsa</h2>
                 <p className="step-sub">Ouvre Sales Nav, configure ces filtres exacts, sauvegarde sous "Pulsa — PME BE qui ont besoin d'un site"</p>
               </div>
-              <a href={SALES_NAV_SEARCH_URL} target="_blank" rel="noreferrer" className="btn-link">Ouvrir Sales Nav ↗</a>
+              <div className="head-actions">
+                <button className={`btn-link ${copied ? 'btn-copied' : ''}`} onClick={copyConfig}>
+                  {copied ? '✓ Config copiée' : '📋 Copier la config'}
+                </button>
+                <a href={SALES_NAV_SEARCH_URL} target="_blank" rel="noreferrer" className="btn-link primary">
+                  Ouvrir Sales Nav ↗
+                </a>
+              </div>
+            </div>
+
+            <div className="callout-blue">
+              ⚡ <strong>Workflow rapide :</strong> clique <strong>"Ouvrir Sales Nav"</strong> → la recherche s'ouvre déjà avec les keywords <em>"CEO OR Founder OR Fondateur Belgique"</em> pré-remplis. Ensuite, ajoute les 12 filtres ci-dessous via le panneau de droite (30 sec).
             </div>
 
             <div className="filters-grid">
@@ -147,7 +202,7 @@ export default function OutboundPulsaPage() {
             </div>
 
             <div className="callout">
-              💡 <strong>Workflow :</strong> tous les matins, Sales Nav t'envoie un mail avec les nouveaux résultats. Tu cliques 5-10 leads chauds → tu copies leurs profils → tu vas étape 3 ci-dessous.
+              💡 <strong>Une fois sauvegardée :</strong> tous les matins Sales Nav t'envoie un mail avec les nouveaux résultats. Tu cliques 5-10 leads chauds → tu copies leurs profils → tu vas étape 3 ci-dessous.
             </div>
           </section>
 
@@ -265,8 +320,17 @@ export default function OutboundPulsaPage() {
           .step-title { font-size:16px; font-weight:600; color:var(--text); margin:0; }
           .step-title.small { font-size:14px; margin-bottom:12px; }
           .step-sub { font-size:12px; color:var(--text-muted); margin:3px 0 0; line-height:1.5; }
-          .btn-link { font-size:12px; color:var(--li); text-decoration:none; padding:6px 10px; background:var(--li-dim); border-radius:var(--radius-sm); white-space:nowrap; flex-shrink:0; }
+          .head-actions { display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; }
+          .btn-link { font-size:12px; color:var(--li); text-decoration:none; padding:6px 12px; background:var(--li-dim); border-radius:var(--radius-sm); white-space:nowrap; flex-shrink:0; border:1px solid var(--li-border); cursor:pointer; font-weight:500; font-family:inherit; }
           .btn-link:hover { background:var(--li); color:#fff; }
+          .btn-link.primary { background:var(--li); color:#fff; }
+          .btn-link.primary:hover { opacity:.9; }
+          .btn-copied { background:rgba(34,197,94,.15); color:#22c55e; border-color:rgba(34,197,94,.3); }
+          .btn-copied:hover { background:rgba(34,197,94,.25); color:#22c55e; }
+
+          .callout-blue { background:var(--li-dim); border-left:3px solid var(--li); padding:10px 14px; border-radius:0 var(--radius-sm) var(--radius-sm) 0; font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:14px; }
+          .callout-blue strong { color:var(--text); }
+          .callout-blue em { color:var(--li); font-style:normal; font-family:var(--mono); font-size:11px; padding:1px 5px; background:var(--bg); border-radius:3px; }
 
           /* Filters Sales Nav */
           .filters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
