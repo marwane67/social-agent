@@ -3,6 +3,13 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 
+const PROJECTS = [
+  { id: '', label: 'Tous projets' },
+  { id: 'pulsa', label: 'Pulsa' },
+  { id: 'axora', label: 'Axora' },
+  { id: 'personal', label: 'Personnel' },
+]
+
 type Account = {
   id: string
   url: string
@@ -59,8 +66,18 @@ export default function SignalsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [signals, setSignals] = useState<Signal[]>([])
   const [filterStatus, setFilterStatus] = useState<string>('')
+  const [filterProject, setFilterProject] = useState<string>('')
   const [minScore, setMinScore] = useState(0)
   const [loading, setLoading] = useState(false)
+
+  // Lire ?tab= et ?project= en query string (depuis /outbound-pulsa)
+  useEffect(() => {
+    if (!router.isReady) return
+    const t = router.query.tab as string
+    if (t === 'accounts' || t === 'import' || t === 'signals') setTab(t)
+    const p = router.query.project as string
+    if (p) setFilterProject(p)
+  }, [router.isReady, router.query.tab, router.query.project])
 
   // Form: nouveau tracked account
   const [newUrl, setNewUrl] = useState('')
@@ -80,14 +97,20 @@ export default function SignalsPage() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<string>('')
 
-  useEffect(() => { load() }, [filterStatus, minScore]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [filterStatus, filterProject, minScore]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     setLoading(true)
     try {
+      const accParams = filterProject ? `?project=${filterProject}` : ''
+      const sigParams = new URLSearchParams({
+        status: filterStatus,
+        project: filterProject,
+        minScore: String(minScore),
+      })
       const [a, s] = await Promise.all([
-        fetch('/api/linkedin/tracked-accounts').then(r => r.json()),
-        fetch(`/api/linkedin/signals?${new URLSearchParams({ status: filterStatus, minScore: String(minScore) })}`).then(r => r.json()),
+        fetch(`/api/linkedin/tracked-accounts${accParams}`).then(r => r.json()),
+        fetch(`/api/linkedin/signals?${sigParams}`).then(r => r.json()),
       ])
       setAccounts(a.accounts || [])
       setSignals(s.signals || [])
@@ -100,7 +123,7 @@ export default function SignalsPage() {
     await fetch('/api/linkedin/tracked-accounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: newUrl, kind: newKind, label: newLabel }),
+      body: JSON.stringify({ url: newUrl, kind: newKind, label: newLabel, project: filterProject || null }),
     })
     setNewUrl(''); setNewLabel('')
     load()
@@ -154,6 +177,7 @@ export default function SignalsPage() {
           signal_type: importSignalType,
           tracked_account_id: importTrackedId || undefined,
           icp: icpOverride || undefined,
+          project: filterProject || undefined,
         }),
       })
       const data = await res.json()
@@ -228,6 +252,9 @@ export default function SignalsPage() {
               </div>
 
               <div className="filters">
+                <select className="select" value={filterProject} onChange={e => setFilterProject(e.target.value)}>
+                  {PROJECTS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
                 <select className="select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                   <option value="">Tous statuts</option>
                   <option value="new">Nouveau</option>

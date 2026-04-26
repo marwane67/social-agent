@@ -18,6 +18,7 @@ const MORE = [
   { href: '/strategy', label: 'Stratégie' },
   { href: '/voice', label: 'Ma voix' },
   { href: '/analytics', label: 'Performance' },
+  { href: '/outbound-pulsa', label: 'Outbound Pulsa' },
   { href: '/signals', label: 'Signaux LinkedIn' },
   { href: '/outreach', label: 'Outreach LinkedIn' },
   { href: '/bio', label: 'Bio' },

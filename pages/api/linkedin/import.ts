@@ -49,6 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     signal_type = 'like',
     tracked_account_id,
     icp,
+    project,
   } = req.body || {}
 
   // 1. Récupérer la liste brute des engagers
@@ -86,6 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     icp_reason: e.icp_reason,
     status: e.icp_score >= 60 ? 'qualified' : 'new',
     tracked_account_id: tracked_account_id || null,
+    project: project || null,
   }))
 
   // Soft dedup : on évite les doublons (même engager_url + même source_url)

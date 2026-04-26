@@ -58,6 +58,11 @@ export default function OutreachPage() {
         const acct = p.signal.source_account || 'un post pertinent'
         setGoal(`Engager la conversation après que cette personne a ${verb} ${acct}. Référencer le sujet du post pour montrer que je suis pertinent.`)
       }
+      // Pré-remplissage depuis /outbound-pulsa → templates
+      if (p.template && p.goal) {
+        setGoal(p.goal)
+        if (p.messageType) setMessageType(p.messageType)
+      }
       sessionStorage.removeItem('signal-prefill')
     } catch {}
   }, [])

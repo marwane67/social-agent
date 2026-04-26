@@ -6,6 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     const status = (req.query.status as string) || ''
+    const project = (req.query.project as string) || ''
     const minScore = parseInt((req.query.minScore as string) || '0', 10)
     const limit = Math.min(parseInt((req.query.limit as string) || '100', 10), 500)
 
@@ -17,6 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(limit)
 
     if (status) q = q.eq('status', status)
+    if (project) q = q.eq('project', project)
     if (minScore > 0) q = q.gte('icp_score', minScore)
 
     const { data, error } = await q

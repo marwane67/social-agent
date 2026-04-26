@@ -64,14 +64,18 @@ create table if not exists public.settings (
 create table if not exists public.tracked_accounts (
   id uuid primary key default gen_random_uuid(),
   url text not null,                          -- profil LinkedIn ou URL d'un post
-  kind text not null default 'competitor',    -- competitor | influencer | own_post | company
+  kind text not null default 'competitor',    -- competitor | influencer | own_post | company | ecosystem | sector
   label text not null default '',             -- nom affiché ("Hubspot CMO", "Mon post launch")
   notes text not null default '',
+  project text,                                -- 'pulsa' | 'axora' | 'personal' | null (multi)
   active boolean not null default true,
   last_checked_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration : ajout de project si la table existait sans
+alter table public.tracked_accounts add column if not exists project text;
 
 create index if not exists tracked_accounts_active_idx on public.tracked_accounts (active, kind, created_at desc);
 
@@ -100,13 +104,18 @@ create table if not exists public.linkedin_signals (
   status text not null default 'new',          -- new | qualified | contacted | replied | dismissed
   -- Lien éventuel vers tracked_account source
   tracked_account_id uuid references public.tracked_accounts(id) on delete set null,
+  project text,                                -- 'pulsa' | 'axora' | 'personal' | null
   detected_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+-- Migration : ajout de project si la table existait sans
+alter table public.linkedin_signals add column if not exists project text;
+
 create index if not exists linkedin_signals_status_idx on public.linkedin_signals (status, icp_score desc, detected_at desc);
 create index if not exists linkedin_signals_engager_idx on public.linkedin_signals (engager_url);
+create index if not exists linkedin_signals_project_idx on public.linkedin_signals (project, status);
 
 -- ============ updated_at triggers ============
 create or replace function public.tg_touch_updated_at()
