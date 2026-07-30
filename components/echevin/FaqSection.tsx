@@ -183,8 +183,6 @@ export default function FaqSection() {
   return (
     <section className="ec-faq">
       <div className="ec-faq__inner">
-        <p className="ec-faq__surtitle">Vos questions</p>
-        <h2 className="ec-faq__heading">FAQ</h2>
         <p className="ec-faq__intro">
           Retrouvez ici les réponses aux questions les plus fréquentes concernant
           la <strong>propreté publique</strong>, la <strong>dératisation</strong> et

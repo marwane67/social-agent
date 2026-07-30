@@ -969,7 +969,7 @@ body:has(.ec-site), html:has(.ec-site) { background: var(--ec-white) !important;
 /* ==========================================================================
    FAQ PAGE
    ========================================================================== */
-.ec-faq { padding: 60px 5% 70px; background: var(--ec-pink-soft); }
+.ec-faq { padding: 40px 5% 70px; background: var(--ec-pink-soft); }
 .ec-faq__inner { max-width: 880px; margin: 0 auto; }
 .ec-faq__surtitle {
   font-size: 14px; font-weight: 900; font-style: italic;
@@ -1076,7 +1076,7 @@ body:has(.ec-site), html:has(.ec-site) { background: var(--ec-white) !important;
 }
 
 @media (max-width: 640px) {
-  .ec-faq { padding: 30px 4% 60px; }
+  .ec-faq { padding: 24px 4% 60px; }
   .ec-faq__intro { font-size: 15px; margin-bottom: 28px; }
   .ec-faq__cat-title { font-size: 22px !important; }
   .ec-faq__q { font-size: 15px; padding: 16px 6px; }
