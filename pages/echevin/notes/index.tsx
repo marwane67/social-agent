@@ -12,7 +12,12 @@ export default function EchevinNotes({ articles, headerImage }: Props) {
       title="Actualités — Anas Ben Abdelmoumen"
       description="Toutes les actualités d'Anas Ben Abdelmoumen, échevin à la Ville de Bruxelles."
     >
-      <PageHeader surtitle="Mes publications" title="Actualités" image={headerImage} />
+      <PageHeader
+        surtitle="Mes publications"
+        title="Actualités"
+        image={headerImage}
+        hideMobileNavLogo
+      />
       <NotesList articles={articles} />
     </EchevinLayout>
   );

@@ -208,14 +208,13 @@ export default function StackedNav({ floating = false }: Props) {
               </svg>
             </button>
           </div>
-          <p className="ec-mobile-menu__eyebrow">Navigation</p>
           <nav className="ec-mobile-menu__nav">
             <Link
               href={HOME_HREF}
               className={router.asPath === HOME_HREF ? 'is-active' : ''}
               onClick={() => setMenuOpen(false)}
             >
-              <span>Accueil</span><span aria-hidden="true">01</span>
+              Accueil
             </Link>
             {NAV_ITEMS.map((item) => (
               <Link
@@ -224,10 +223,7 @@ export default function StackedNav({ floating = false }: Props) {
                 className={isActive(item.href) ? 'is-active' : ''}
                 onClick={() => setMenuOpen(false)}
               >
-                <span>{item.label}</span>
-                <span aria-hidden="true">
-                  {String(NAV_ITEMS.indexOf(item) + 2).padStart(2, '0')}
-                </span>
+                {item.label}
               </Link>
             ))}
           </nav>

@@ -4,15 +4,17 @@ type Props = {
   surtitle: string;
   title: string;
   image?: string;
+  hideMobileNavLogo?: boolean;
 };
 
 export default function PageHeader({
   surtitle,
   title,
   image = '/anas.jpg',
+  hideMobileNavLogo = false,
 }: Props) {
   return (
-    <section className="ec-page-header">
+    <section className={`ec-page-header${hideMobileNavLogo ? ' ec-page-header--hide-mobile-nav-logo' : ''}`}>
       <div
         className="ec-page-header__bg"
         style={{ backgroundImage: `url(${image})` }}
