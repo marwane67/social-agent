@@ -6,6 +6,7 @@ import FeaturedNote from '../../components/echevin/FeaturedNote';
 import NotesList from '../../components/echevin/NotesList';
 import VideosSection from '../../components/echevin/VideosSection';
 import ContactSection from '../../components/echevin/ContactSection';
+import NewsMarquee from '../../components/echevin/NewsMarquee';
 import {
   getArticles,
   getHomeSettings,
@@ -33,6 +34,7 @@ export default function EchevinHome({ articles, featured, videos, settings }: Pr
       <Hero hero={settings.hero} />
       <Newsletter settings={settings.newsletter} />
       <FeaturedNote featured={featured} imageOverride={settings.featured.image_url || null} />
+      <NewsMarquee articles={rest.slice(0, 10)} />
       <NotesList articles={rest} limit={4} showMore moreHref="/echevin/notes" />
       <VideosSection videos={videos.slice(0, 4)} />
       <ContactSection settings={settings.contact} />

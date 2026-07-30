@@ -1,24 +1,25 @@
-// Logo inspire du design de Manuel Bompard :
-// - Prenom en petit sans-serif regulier au-dessus
-// - NOM en enorme, bold, condensed, majuscules
-// - Barre coloree verticale decorative a gauche (couleurs PS)
+// Logo "Anas Ben / ABDELMOUMEN" :
+// - "Anas Ben" en petit au-dessus (Montserrat regular)
+// - "ABDELMOUMEN" en énorme en-dessous (Anton condensé majuscules)
+// - Barre verticale colorée à gauche (couleurs PS)
 interface LogoProps {
   variant?: 'dark' | 'light';
   size?: 'sm' | 'md' | 'lg';
 }
 
 const SIZES = {
-  sm: { firstName: 14, lastName: 32, barWidth: 8 },
-  md: { firstName: 20, lastName: 52, barWidth: 12 },
-  lg: { firstName: 28, lastName: 72, barWidth: 16 },
+  sm: { firstName: 14, lastName: 38, barWidth: 8 },
+  md: { firstName: 22, lastName: 76, barWidth: 14 },
+  lg: { firstName: 30, lastName: 100, barWidth: 18 },
 };
 
 export default function Logo({ variant = 'dark', size = 'md' }: LogoProps) {
   const s = SIZES[size];
-  const textColor = variant === 'light' ? '#FFFFFF' : '#000000';
+  const color = variant === 'light' ? '#FFFFFF' : '#000000';
 
   return (
     <div
+      className={`ec-logo ec-logo--${size} ec-logo--${variant}`}
       style={{
         display: 'inline-flex',
         alignItems: 'stretch',
@@ -27,8 +28,8 @@ export default function Logo({ variant = 'dark', size = 'md' }: LogoProps) {
         fontFamily: 'Montserrat, sans-serif',
       }}
     >
-      {/* Barre coloree verticale a gauche (degrade PS : turquoise -> rouge -> rose) */}
       <div
+        className="ec-logo__bar"
         style={{
           width: s.barWidth,
           minHeight: s.lastName + 4,
@@ -39,28 +40,26 @@ export default function Logo({ variant = 'dark', size = 'md' }: LogoProps) {
           flexShrink: 0,
         }}
       />
-
-      {/* Texte : prenom + nom */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="ec-logo__text" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span
+          className="ec-logo__first"
           style={{
             fontFamily: 'Montserrat, sans-serif',
             fontWeight: 500,
             fontSize: s.firstName,
-            color: textColor,
+            color,
             letterSpacing: '-0.01em',
             lineHeight: 1,
-            textTransform: 'none',
-            fontStyle: 'normal',
           }}
         >
           Anas Ben
         </span>
         <span
+          className="ec-logo__last"
           style={{
             fontFamily: 'Anton, Impact, sans-serif',
             fontSize: s.lastName,
-            color: textColor,
+            color,
             letterSpacing: '0.01em',
             lineHeight: 0.9,
             textTransform: 'uppercase',

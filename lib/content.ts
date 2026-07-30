@@ -42,9 +42,14 @@ export type HeroSettings = {
   surtitle: string;
   title: string;
   tagline: string;
+  body_html: string;
   image_path: string | null;
   image_url: string;
 };
+
+const DEFAULT_HERO_BODY_HTML =
+  "<p>Depuis le 1<sup>er</sup> décembre 2024, je suis <strong>échevin des Finances et de la Propreté publique</strong> à la Ville de Bruxelles.</p>" +
+  "<p>Socialiste engagé, né et grandit à Bruxelles, je mets mon énergie au service des habitantes et habitants de <strong>notre ville.</strong></p>";
 
 export type NewsletterSettings = {
   enabled: boolean;
@@ -77,7 +82,15 @@ export type HomeSettings = {
   contact: ContactSettings;
 };
 
-export async function getPageHeaderImage(key: 'notes_header' | 'videos_header' | 'bio_header'): Promise<PageHeaderImage> {
+export type MediaPhoto = { path: string; caption: string; url: string };
+
+export async function getMediasList(): Promise<MediaPhoto[]> {
+  const { data } = await sbPublic.from('settings').select('value').eq('key', 'medias').maybeSingle();
+  const list = ((data?.value as any)?.items ?? []) as { path: string; caption: string }[];
+  return list.map((p) => ({ ...p, url: mediaUrl(p.path) }));
+}
+
+export async function getPageHeaderImage(key: 'notes_header' | 'videos_header' | 'bio_header' | 'faq_header' | 'medias_header'): Promise<PageHeaderImage> {
   const { data } = await sbPublic.from('settings').select('value').eq('key', key).maybeSingle();
   const v = (data?.value ?? {}) as any;
   const image_path = v.image_path ?? '/anas.jpg';
@@ -153,6 +166,7 @@ export async function getHero(): Promise<HeroSettings> {
     surtitle: v.surtitle ?? 'ÉCHEVIN DES FINANCES ET DE LA PROPRETÉ PUBLIQUE',
     title: v.title ?? 'ANAS BEN ABDELMOUMEN',
     tagline: v.tagline ?? 'VILLE DE BRUXELLES',
+    body_html: v.body_html ?? DEFAULT_HERO_BODY_HTML,
     image_path,
     image_url: mediaUrl(image_path),
   };
@@ -167,6 +181,7 @@ export async function getHomeSettings(): Promise<HomeSettings> {
     surtitle: map.hero?.surtitle ?? 'ÉCHEVIN DES FINANCES ET DE LA PROPRETÉ PUBLIQUE',
     title: map.hero?.title ?? 'ANAS BEN ABDELMOUMEN',
     tagline: map.hero?.tagline ?? 'VILLE DE BRUXELLES',
+    body_html: map.hero?.body_html ?? DEFAULT_HERO_BODY_HTML,
     image_path: heroImgPath,
     image_url: mediaUrl(heroImgPath),
   };
@@ -189,7 +204,7 @@ export async function getHomeSettings(): Promise<HomeSettings> {
     title: contactRaw.title ?? 'Me contacter',
     intro_html:
       contactRaw.intro_html ??
-      "<p>Pour toute question relative à l'échevinat des Finances ou de la Propreté publique, vous pouvez me joindre à la <strong>Ville de Bruxelles</strong>.</p>",
+      "<p>Pour toute question relative à l'échevinat des Finances ou de la Propreté publique, vous pouvez me joindre <strong>via le formulaire ci-dessous</strong> :</p>",
     image_path: contactRaw.image_path ?? '/bruxelles.jpg',
     image_url: mediaUrl(contactRaw.image_path ?? '/bruxelles.jpg'),
   };

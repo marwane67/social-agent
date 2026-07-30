@@ -42,7 +42,7 @@ export default function VideosTab() {
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   async function load() {
-    const j = await api('GET', '/api/admin/videos');
+    const j = await api('GET', '/api/admin/echevin/videos');
     setItems(j.items || []);
   }
   useEffect(() => {
@@ -60,10 +60,10 @@ export default function VideosTab() {
     setBusy(true);
     try {
       if (editing.id) {
-        await api('PATCH', '/api/admin/videos', editing);
+        await api('PATCH', '/api/admin/echevin/videos', editing);
       } else {
         const maxPos = items.reduce((m, it) => Math.max(m, it.position || 0), 0);
-        await api('POST', '/api/admin/videos', { ...editing, position: editing.position || maxPos + 1 });
+        await api('POST', '/api/admin/echevin/videos', { ...editing, position: editing.position || maxPos + 1 });
       }
       setEditing(null);
       await load();
@@ -76,7 +76,7 @@ export default function VideosTab() {
 
   async function remove(id: string) {
     if (!confirm('Supprimer cette vidéo ?')) return;
-    await api('DELETE', `/api/admin/videos?id=${id}`);
+    await api('DELETE', `/api/admin/echevin/videos?id=${id}`);
     load();
   }
 
@@ -85,8 +85,8 @@ export default function VideosTab() {
     const swap = items[idx + dir];
     if (!swap) return;
     await Promise.all([
-      api('PATCH', '/api/admin/videos', { id, position: swap.position }),
-      api('PATCH', '/api/admin/videos', { id: swap.id, position: items[idx].position }),
+      api('PATCH', '/api/admin/echevin/videos', { id, position: swap.position }),
+      api('PATCH', '/api/admin/echevin/videos', { id: swap.id, position: items[idx].position }),
     ]);
     load();
   }

@@ -22,6 +22,8 @@ const NAV_ITEMS = [
     ],
   },
   { label: 'Bio', href: '/echevin/bio' },
+  { label: 'FAQ', href: '/echevin/faq' },
+  { label: 'Médias', href: '/echevin/medias' },
 ];
 
 type SearchNote = { id: string; title: string; excerpt: string; source: string; date: string; href: string };
@@ -50,10 +52,23 @@ export default function StackedNav({ floating = false }: Props) {
   useEffect(() => {
     // Lock body scroll when mobile menu is open
     if (typeof document === 'undefined') return;
-    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = menuOpen ? 'hidden' : previousBodyOverflow;
+    document.documentElement.style.overflow = menuOpen ? 'hidden' : previousHtmlOverflow;
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
     };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [menuOpen]);
 
   useEffect(() => {
@@ -180,11 +195,11 @@ export default function StackedNav({ floating = false }: Props) {
         <div className="ec-mobile-menu" role="dialog" aria-modal="true">
           <div className="ec-mobile-menu__header">
             <Link href={HOME_HREF} className="ec-mobile-menu__brand" onClick={() => setMenuOpen(false)}>
-              <Logo size="md" variant="light" />
+              <Logo size="sm" variant="light" />
             </Link>
             <button
               className="ec-mobile-menu__close"
-              aria-label="Fermer"
+              aria-label="Fermer le menu"
               onClick={() => setMenuOpen(false)}
             >
               <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -193,21 +208,27 @@ export default function StackedNav({ floating = false }: Props) {
               </svg>
             </button>
           </div>
+          <p className="ec-mobile-menu__eyebrow">Navigation</p>
           <nav className="ec-mobile-menu__nav">
-            <Link href={HOME_HREF} onClick={() => setMenuOpen(false)}>Accueil</Link>
+            <Link
+              href={HOME_HREF}
+              className={router.asPath === HOME_HREF ? 'is-active' : ''}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span>Accueil</span><span aria-hidden="true">01</span>
+            </Link>
             {NAV_ITEMS.map((item) => (
-              <div key={item.label}>
-                <Link href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</Link>
-                {item.children && (
-                  <div className="ec-mobile-menu__sub">
-                    {item.children.map((c) => (
-                      <Link key={c.label} href={c.href} onClick={() => setMenuOpen(false)}>
-                        {c.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <Link
+                key={item.label}
+                href={item.href}
+                className={isActive(item.href) ? 'is-active' : ''}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span>{item.label}</span>
+                <span aria-hidden="true">
+                  {String(NAV_ITEMS.indexOf(item) + 2).padStart(2, '0')}
+                </span>
+              </Link>
             ))}
           </nav>
           <div className="ec-mobile-menu__search">

@@ -13,7 +13,7 @@ export default function AdminLogin() {
     setErr(null);
     setBusy(true);
     try {
-      const r = await fetch('/api/admin/login', {
+      const r = await fetch('/api/echevin/admin/login', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password: pwd }),

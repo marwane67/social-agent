@@ -7,8 +7,9 @@ import ArticlesTab from '../../../components/admin/ArticlesTab';
 import VideosTab from '../../../components/admin/VideosTab';
 import BioTab from '../../../components/admin/BioTab';
 import HomeTab from '../../../components/admin/HomeTab';
+import MediasTab from '../../../components/admin/MediasTab';
 
-type Tab = 'articles' | 'videos' | 'bio' | 'home';
+type Tab = 'articles' | 'videos' | 'bio' | 'home' | 'medias';
 
 export default function AdminHome() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function AdminHome() {
 
   useEffect(() => {
     const t = router.query.tab as Tab | undefined;
-    if (t && ['articles', 'videos', 'bio', 'home'].includes(t)) setTab(t);
+    if (t && ['articles', 'videos', 'bio', 'home', 'medias'].includes(t)) setTab(t);
   }, [router.query.tab]);
 
   return (
@@ -47,6 +48,9 @@ export default function AdminHome() {
             <button className={tab === 'home' ? 'is-active' : ''} onClick={() => setTab('home')}>
               Accueil
             </button>
+            <button className={tab === 'medias' ? 'is-active' : ''} onClick={() => setTab('medias')}>
+              Médias
+            </button>
           </nav>
           <div className="ec-admin__actions">
             <a href="/echevin" target="_blank" rel="noopener noreferrer" className="ec-admin__view">
@@ -62,6 +66,7 @@ export default function AdminHome() {
           {tab === 'videos' && <VideosTab />}
           {tab === 'bio' && <BioTab />}
           {tab === 'home' && <HomeTab />}
+          {tab === 'medias' && <MediasTab />}
         </main>
       </div>
     </>

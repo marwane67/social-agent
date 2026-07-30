@@ -14,7 +14,7 @@ export default function BioTab() {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function load() {
-    const j = await api('GET', '/api/admin/bio');
+    const j = await api('GET', '/api/admin/echevin/bio');
     setItems(j.items || []);
   }
   useEffect(() => {
@@ -26,9 +26,9 @@ export default function BioTab() {
     setMsg(null);
     try {
       if (s.id) {
-        await api('PATCH', '/api/admin/bio', s);
+        await api('PATCH', '/api/admin/echevin/bio', s);
       } else {
-        await api('POST', '/api/admin/bio', s);
+        await api('POST', '/api/admin/echevin/bio', s);
       }
       await load();
       setMsg('Enregistré ✓');
@@ -42,7 +42,7 @@ export default function BioTab() {
 
   async function remove(id: string) {
     if (!confirm('Supprimer cette section ?')) return;
-    await api('DELETE', `/api/admin/bio?id=${id}`);
+    await api('DELETE', `/api/admin/echevin/bio?id=${id}`);
     load();
   }
 
@@ -51,8 +51,8 @@ export default function BioTab() {
     const swap = items[idx + dir];
     if (!swap) return;
     await Promise.all([
-      api('PATCH', '/api/admin/bio', { id, position: swap.position }),
-      api('PATCH', '/api/admin/bio', { id: swap.id, position: items[idx].position }),
+      api('PATCH', '/api/admin/echevin/bio', { id, position: swap.position }),
+      api('PATCH', '/api/admin/echevin/bio', { id: swap.id, position: items[idx].position }),
     ]);
     load();
   }

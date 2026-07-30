@@ -25,18 +25,14 @@ export default function Hero({ hero }: { hero?: HeroSettings }) {
             <Logo size="md" variant="dark" />
           </div>
 
-          <div className="ec-hero__text">
-            <p>
-              Depuis le 1<sup>er</sup> décembre 2024, je suis{' '}
-              <strong>échevin des Finances et de la Propreté publique</strong>{' '}
-              à la Ville de Bruxelles.
-            </p>
-            <p>
-              Socialiste engagé, né et élevé à Bruxelles, je mets mon énergie
-              au service des habitantes et habitants de{' '}
-              <strong>notre ville.</strong>
-            </p>
-          </div>
+          <div
+            className="ec-hero__text"
+            dangerouslySetInnerHTML={{
+              __html:
+                hero?.body_html ||
+                "<p>Depuis le 1<sup>er</sup> décembre 2024, je suis <strong>échevin des Finances et de la Propreté publique</strong> à la Ville de Bruxelles.</p><p>Socialiste engagé, né et grandit à Bruxelles, je mets mon énergie au service des habitantes et habitants de <strong>notre ville.</strong></p>",
+            }}
+          />
 
           <SocialRow />
         </div>
