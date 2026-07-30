@@ -197,13 +197,13 @@
      On masque toutes les couches colorées + le logo "Anas Ben ABDELMOUMEN"
      pour ne pas cacher la photo. */
   .ec-nav-wrap {
-    position: absolute !important;
-    top: 12px;
-    right: 12px;
+    position: fixed !important;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
     margin: 0 !important;
     padding: 0 !important;
     width: auto !important;
-    z-index: 50;
+    z-index: 2600;
   }
   .ec-nav-layer--purple,
   .ec-nav-layer--red,
@@ -404,6 +404,7 @@
   }
 
   .ec-footer__row { padding: 28px 18px; gap: 16px; }
+  .ec-footer__nav { display: none; }
   .ec-footer__brand-title { font-size: 28px; }
   .ec-footer__party-img { height: 34px !important; }
 
