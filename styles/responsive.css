@@ -461,7 +461,7 @@
 @media (max-width: 1024px) {
   html, body { width: 100%; max-width: 100%; overflow-x: clip; }
   .ec-site { width: 100%; max-width: 100%; overflow-x: clip; }
-  .ec-page-header--hide-mobile-nav-logo .ec-nav__logo {
+  .ec-page-header .ec-nav__logo {
     display: none !important;
   }
   img, video { max-width: 100%; height: auto; }
