@@ -334,7 +334,10 @@
   .ec-footer__right { min-height: auto; gap: 16px; align-items: flex-start; }
   .ec-footer__nav { justify-content: flex-start; flex-wrap: wrap; gap: 10px; }
   .ec-footer__nav a { font-size: 13px; }
-  .ec-footer__party-logo { justify-content: flex-start; }
+  .ec-footer__party-logo {
+    justify-content: flex-start;
+    align-self: flex-start;
+  }
   .ec-footer__credits { text-align: left; font-size: 12px; }
 
   .ec-notes-page, .ec-videos-page, .ec-bio { padding: 40px 4% 60px; }
